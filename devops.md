@@ -334,4 +334,19 @@ docker pull: Download an image from a registry.
 | **Scalability**     | Harder to scale—spinning up new VMs takes time and resources. | Easy to scale—containers start quickly and use fewer resources.   |
 | **Typical File**    | VM image file (e.g., .vmdk, .ova).                         | Container image (e.g., layered tarball in Docker).                |
 
-### 
+```
+sudo apt install docker.io
+```
+```
+systemctl status docker
+```
+```
+docker images
+```
+```
+docker pull docker.arvancloud.ir/grafana/grafana
+```
+```
+docker run -d -p 3000:3000 --name=grafana docker.arvancloud.ir/grafana/grafana
+```
+

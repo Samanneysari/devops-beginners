@@ -70,6 +70,7 @@ The main content of an HTTP request or response. It’s the "payload" sent betwe
 
 * Send data to a server (e.g., form submissions, file uploads).
 * Receive data from a server (e.g., API responses).
+
 **Example** :
 When creating a user via an API, the body might look like:
 
@@ -83,6 +84,7 @@ The core data being transmitted in a request/response body. It’s the "meat" of
 
 * Transfer critical information (e.g., user input, sensor data).
 * Used in integrations between systems (e.g., triggering a deployment).
+
 **Example** :
 A webhook payload sent to a CI/CD tool:
 
@@ -302,9 +304,11 @@ You can also upload your own images to share with others.
 
 #### 6. Docker Registry:
 A storage system for Docker images, allowing you to save, share, and distribute them.
+
 Key details:
-Public Registries: Docker Hub is the most famous one, offering free public image hosting (e.g., docker pull nginx gets an image from Docker Hub).
-Private Registries: You can set up your own registry (e.g., on your server or cloud) for private images using Docker’s open-source registry software or services like Amazon ECR, Google Container Registry, or GitHub Container Registry.
+
+* Public Registries: Docker Hub is the most famous one, offering free public image hosting (e.g., docker pull nginx gets an image from Docker Hub).
+* Private Registries: You can set up your own registry (e.g., on your server or cloud) for private images using Docker’s open-source registry software or services like Amazon ECR, Google Container Registry, or GitHub Container Registry.
 Commands:
 ```
 docker push: Upload an image to a registry.

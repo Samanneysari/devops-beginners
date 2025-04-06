@@ -296,7 +296,6 @@ A container is a running instance of an image. If an image is the recipe, the co
 You can start, stop, or delete containers. They’re isolated from each other but share the same host OS, making them super efficient.
 #### 4. Dockerfile:
 This is a simple text file where you write instructions to build a Docker image. It’s like a script that says, “Install this software, copy these files, and run this command.”
-Example Dockerfile for a Python app:
 
 #### 5. Docker Hub:
 This is a big online library (like a cloud storage for Docker images) where people share pre-made images. Want a container with MySQL or Node.js? You can download an image from Docker Hub and start a container in seconds.
@@ -338,19 +337,72 @@ docker pull: Download an image from a registry.
 | **Scalability**     | Harder to scale—spinning up new VMs takes time and resources. | Easy to scale—containers start quickly and use fewer resources.   |
 | **Typical File**    | VM image file (e.g., .vmdk, .ova).                         | Container image (e.g., layered tarball in Docker).                |
 
+installation guide:
 ```
 sudo apt install docker.io
 ```
+### Basic docker commands:
+#### 1. Cheking docker status
 ```
 systemctl status docker
 ```
+#### 2. Docker version
+Displays the Docker version information for both the client and server.
+```
+docker version
+```
+#### 3. Docker info
+Provides detailed information about the Docker installation and system.
+```
+docker info
+```
+#### 4. Docker Images
+Lists all images stored locally on your system.
 ```
 docker images
 ```
+#### 5. Docker pull
+Downloads an image from a registry (e.g., Docker Hub) to your local machine.
 ```
 docker pull docker.arvancloud.ir/grafana/grafana
 ```
+#### 6. Docker run
+Creates and starts a container from an image.
 ```
 docker run -d -p 3000:3000 --name=grafana docker.arvancloud.ir/grafana/grafana
 ```
+* **-d**: in the detached mode
+* **-p**: port
 
+#### 7. Docker ps
+lists running containers
+
+* Use -a to show all containers (running and stopped).
+* Displays container ID, image, status, ports, and names.
+```
+docker ps
+```
+#### 8. Docker stop
+Stops a running container.
+
+* Sends a SIGTERM signal to the container’s main process, allowing it to shut down gracefully.
+* Use the container ID or name.
+```
+docker stop nginx
+```
+#### 9.Docker start
+Starts a stopped container.
+
+* Restarts a container that was previously stopped, retaining its configuration (e.g., port mappings).
+* Does not create a new container.
+```
+docker start nginx
+```
+#### 10. Docker restart
+Restarts a running container.
+
+* Equivalent to docker stop followed by docker start.
+* Useful for refreshing a container’s state.
+```
+docker restart nginx
+```

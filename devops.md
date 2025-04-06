@@ -203,7 +203,7 @@ HTTP status codes are three-digit numbers that a server sends to your browser (o
 * 5. **`405 Method Not Allowed`**
       You tried the wrong method (e.g., using POST when only GET is allowed).
 ##### 5xx: Server Errors
-      These mean the server screwed up, not you.
+These mean the server screwed up, not you.
 
 * 1. **`500 Internal Server Error`**
 A catch-all error when something goes wrong on the server, but it won’t tell you what.
@@ -405,4 +405,43 @@ Restarts a running container.
 * Useful for refreshing a container’s state.
 ```
 docker restart nginx
+```
+#### 11. Docker rm
+Removes a stopped container.
+
+* Use -f to force removal of a running container (stops it first).
+* Frees up system resources by deleting unused containers.
+```
+docker rm nginx
+```
+#### 12. Docker rmi
+Removes one or more images from your local system.
+
+* Images must not be in use by any containers (running or stopped).
+* Use -f to force removal if needed.
+```
+docker rmi nginx
+```
+
+| Command       | What it Removes | Example Target         | Notes                                   |
+|---------------|------------------|-------------------------|-----------------------------------------|
+| `docker rm`   | Containers        | `funny_container`       | Container must be **stopped** first     |
+| `docker rmi`  | Images            | `ubuntu:20.04`          | No container should be using the image  |
+
+#### 13. Docker exec
+
+Runs a command inside a running container.
+
+* Useful for debugging or interacting with a container’s processes.
+* Use -it for an interactive terminal (e.g., a shell).
+```
+docker exec -it oraclelinux bash
+```
+#### 14. Docker logs
+Fetches the logs of a container.
+
+* Shows the output (stdout/stderr) of the container’s main process.
+* Use -f to follow logs in real-time.
+```
+docker logs nginx
 ```

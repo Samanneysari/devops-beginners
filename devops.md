@@ -2,17 +2,19 @@
 
 Topic of this Course:
 
-* 1-http/https,Nginx
+* 1-http/https
 
-* 2-Docker
+* 2- Nginx
 
-* 3-Git/Gitlab CI
+* 3-Docker
 
-* 4-Bash scripting
+* 4-Git/Gitlab CI
 
-* 5-Ansible
+* 5-Bash scripting
 
-* 5-Prometheus/Grafana
+* 6-Ansible
+
+* 7-Prometheus/Grafana
 
 ## http, https, Nginx
 
@@ -445,3 +447,141 @@ Fetches the logs of a container.
 ```
 docker logs nginx
 ```
+### Writing a Dockerfile
+
+#### 1. Navigate to Your Project Directory
+Let’s say your project is in a folder called my-python-app on your desktop.
+In the terminal, type this command and press Enter:
+```
+cd Desktop/my-python-app
+```
+
+#### 2. Create the Dockerfile
+In the terminal, type this command and press Enter:
+```
+vim dockerfile
+```
+#### 3. Write the First Line - Specify the Base Image
+In the Dockerfile, type this as the first line:
+```
+FROM python:3.9
+```
+
+* FROM is a Docker instruction (a command) that tells Docker which base image to use.
+* python:3.9 means we’re using an official Python image from Docker Hub, version 3.9.
+* No spaces before or after FROM, just FROM python:3.9.
+
+#### 4. Set the Working Directory
+```
+WORKDIR /app
+```
+
+* WORKDIR sets the folder inside the Docker container where all future commands will run.
+* /app is the name of the folder (it’s created automatically inside the container).
+* So, it’s like saying: “Hey Docker, do everything in the /app folder from now on.”
+
+#### 5. Copy Your Project Files
+```
+COPY . .
+```
+
+* COPY tells Docker to copy files from your computer to the container.
+* The first . (dot) means “everything in the current folder on my computer” (the my-python-app folder).
+* The second . (dot) means “put it in the current folder in the container” (which is /app because of WORKDIR).
+* There’s a space between the two dots: COPY . . (not COPY..).
+
+#### 6. Install Dependencies
+Let’s say your Python app has a requirements.txt file listing its dependencies (like Flask or other libraries).
+```
+RUN pip install -r requirements.txt
+```
+
+* RUN tells Docker to execute a command inside the container.
+* pip install -r requirements.txt is the command to install Python packages listed in requirements.txt.
+* There’s a space after RUN, then the command.
+
+#### 7. Specify the Command to Run Your App
+```
+CMD ["python", "app.py"]
+```
+* CMD tells Docker what to run when the container starts.
+* ["python", "app.py"] is a list (in square brackets []) that says: “Run the app.py file with Python.”
+* Use quotes " around python and app.py, and separate them with a comma ,.
+* No space between CMD and [, just CMD ["python", "app.py"].
+* This assumes your Python app’s main file is called app.py.
+8. Save the Dockerfile
+
+Here’s what your complete Dockerfile looks like:
+```
+FROM python:3.9
+
+WORKDIR /app
+
+COPY . .
+
+RUN pip install -r requirements.txt
+
+CMD ["python", "app.py"]
+```
+#### 8. Build the Docker Image
+
+A Docker "image" is like a blueprint or a packaged version of your app, including Python, your code, and dependencies.
+
+We need to "build" this image from the Dockerfile.
+
+
+Make sure you’re still inside the my-python-app folder (you can check with dir on Windows or ls on Linux/Mac to see if Dockerfile is there).
+```
+docker build -t my-python-app .
+```
+
+* docker: The Docker command-line tool.
+* build: Tells Docker to build an image from a Dockerfile.
+* -t: A flag (option) that means "tag" or "name the image."
+* my-python-app: The name you’re giving the image (you can call it anything, like my-app or cool-project).
+* . (dot): Means "use the Dockerfile in the current folder."
+
+Docker reads the Dockerfile line by line:
+
+* Downloads the python:3.9 image (if not already downloaded).
+* Creates the /app folder.
+* Copies your files into /app.
+* Runs pip install -r requirements.txt to install dependencies.
+* Prepares the CMD instruction for later.*
+You’ll see output in the terminal showing each step. When it’s done, it says something like "Successfully built [image-id]".
+
+#### 9. Run the Docker Container
+
+A "container" is a running instance of your image—like starting the app based on the blueprint.
+```
+docker run -d -p 3000:3000 my-python-app
+```
+
+* run: Tells Docker to start a container from an image.
+* my-python-app: The name of the image you built.
+* -p: Port mapping.
+* 3000:3000: Maps port 3000 on your computer to port 3000 in the container.
+* -d : running in the background
+Docker starts a container and executes the CMD ["python", "app.py"] from the Dockerfile.
+
+If app your app.py` prints something (like "Hello, World!"), you’ll see it in the terminal.
+
+If it’s a web app (e.g., Flask), it might say "Running on that URL in your browser.
+Note:
+If your app runs a web server (like Flask), add -p 3000:3000 to map ports:
+
+Common CMD Commands in Dockerfile for Popular Languages:
+
+| Language       | Typical Run File        | CMD in Dockerfile                     | Notes |
+|----------------|--------------------------|----------------------------------------|-------|
+| **Node.js**    | `index.js` / via `npm`   | `CMD ["npm", "start"]`                 | Requires `start` script in `package.json` |
+|                | `index.js`               | `CMD ["node", "index.js"]`             | Direct run without `npm` |
+| **Python**     | `app.py`                 | `CMD ["python3", "app.py"]`            | Use `python` if Python 3 is default |
+| **Java**       | `app.jar`                | `CMD ["java", "-jar", "app.jar"]`      | JAR should be built before Docker build |
+| **Go**         | compiled binary `app`    | `CMD ["./app"]`                        | Build binary before copy |
+| **PHP**        | `index.php`              | `CMD ["php", "-S", "0.0.0.0:8000"]`    | Starts PHP built-in dev server |
+| **Ruby**       | `app.rb`                 | `CMD ["ruby", "app.rb"]`               | |
+| **.NET Core**  | `myapp.dll`              | `CMD ["dotnet", "myapp.dll"]`          | Requires SDK/runtime in image |
+| **Rust**       | compiled binary `app`    | `CMD ["./app"]`                        | Use multi-stage builds for smaller images |
+| **Shell Script** | `start.sh`             | `CMD ["sh", "start.sh"]`               | Or `bash` if needed |
+

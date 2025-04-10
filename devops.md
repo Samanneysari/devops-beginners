@@ -660,7 +660,7 @@ For many modern apps, combining them works best. For instance, Nginx might serve
 In the past, the line between web servers and application servers was sharper. Now, it’s a bit blurry—some web servers (like Apache with PHP) can handle more dynamic tasks, and many application servers (like Tomcat) can serve web content directly. Plus, cloud platforms like AWS or Heroku often bundle these roles into one easy package. Still, knowing the difference helps you pick the right tools for your project and understand how systems are built.
 
 ### What is Nginx?
-Nginx (pronounced "engine-x") is a popular web server software. A web server is like a waiter in a restaurant: it takes requests from customers (users’ browsers) and delivers the requested "dishes" (web pages, images, or other files). But Nginx can do more than just serve web pages—it can also act as a reverse proxy (directing traffic to other servers) and a load balancer (distributing traffic across multiple servers to handle more users).
+Nginx is a popular web server software. A web server is like a waiter in a restaurant: it takes requests from customers (users’ browsers) and delivers the requested "dishes" (web pages, images, or other files). But Nginx can do more than just serve web pages—it can also act as a reverse proxy (directing traffic to other servers) and a load balancer (distributing traffic across multiple servers to handle more users).
 
 #### hat is the Nginx Configuration File?
 The Nginx configuration file is a text file that tells Nginx how to behave. It’s like a set of instructions or a recipe that Nginx follows to know:
@@ -721,6 +721,75 @@ http {
 * Curly braces ({}): Used to open and close blocks. Make sure each opening { has a matching closing }.
 * Indentation: Not required but recommended for readability (e.g., indenting nested blocks with spaces).
 * Comments: Start with a # symbol. For example, # This is a comment.
+
+#### Nginx as a Reverse Proxy
+A reverse proxy is a server that sits between clients (e.g., a user’s browser) and backend servers (e.g., web application servers). It forwards client requests to the appropriate backend server and returns the server’s response to the client. This setup provides several benefits:
+
+* Security: Hides backend servers from direct client access.
+* Load Distribution: Can distribute requests across multiple servers.
+* Performance: Enables caching and SSL termination.
+To configure Nginx as a reverse proxy, use the proxy_pass directive within a location block to forward requests to a backend server.
+```
+http {
+    server {
+        listen 80;
+        server_name example.com;
+
+        location / {
+            proxy_pass http://backend:8080;
+        }
+    }
+}
+```
+* **`proxy_pass http://backend:8080;`**: Forwards requests to the backend server at http://backend:8080. Replace backend:8080 with your actual backend server’s address or an upstream block name (e.g., backend). When proxying requests, the backend server often needs details about the original client. Use proxy_set_header to pass this information:
+
+* **`proxy_set_header Host $host;`**: Sends the original host requested by the client.
+* **`proxy_set_header X-Real-IP $remote_addr;`**: Sends the client’s real IP address.
+* **`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`**: Sends the client’s IP and any previous proxies’ IPs.
+```
+location / {
+    proxy_pass http://backend:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+##### Handling Slow Clients with Proxy Buffering
+For slow clients or when the Nginx server has limited memory, enable proxy buffering to store the backend’s response temporarily before sending it to the client. This reduces the load on Nginx and prevents it from holding connections open too long.
+```
+location / {
+    proxy_pass http://backend:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    
+    proxy_buffering on;
+    proxy_buffer_size 8k;
+    proxy_buffers 8 32k;
+}
+```
+* **`proxy_buffering on;`**: Enables buffering of the backend response.
+* **`proxy_buffer_size 8k;`**: Sets the size of the initial buffer (e.g., for headers).
+* **`proxy_buffers 8 32k;`**: Defines 8 buffers of 32KB each for the rest of the response.
+* Note: Adjust buffer sizes based on your server’s memory and traffic patterns. Smaller buffers save memory but may slow down transfers for large responses.
+
+##### Specifying Network Interfaces with Proxy Bind
+If your Nginx server has multiple network interfaces (e.g., multiple IP addresses), use proxy_bind to specify which interface Nginx should use to connect to the backend server.
+```
+location / {
+    proxy_pass http://backend:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    
+    proxy_buffering on;
+    proxy_buffer_size 8k;
+    proxy_buffers 8 32k;
+    
+    proxy_bind 192.168.1.100;
+}
+```
+* **`proxy_bind 192.168.1.100;`**: Forces Nginx to use the network interface with IP 192.168.1.100 for outbound connections to the backend. Replace with your desired IP.
 
 #### What is Load Balancing?
 Load balancing is like distributing tasks among multiple workers to get things done faster and more efficiently. In web terms, it means spreading incoming user requests across multiple servers so that no single server gets overwhelmed. This helps:
@@ -787,7 +856,7 @@ Configure the server block inside http:
 ``` 
 * **`server { ... }`**: Defines how Nginx listens for incoming requests.
 * **`listen 80;`**: Listens on port 80.
-* **ocation / { ... }**: Handles requests for the root URL.
+* **`location / { ... }`**: Handles requests for the root URL.
 * **`proxy_pass http://backend;`**: Forwards requests to the backend upstream group.
 * Important: Include http:// before the upstream name.
 Close the http block:

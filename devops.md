@@ -588,6 +588,171 @@ Common CMD Commands in Dockerfile for Popular Languages:
 | **Rust**       | compiled binary `app`    | `CMD ["./app"]`                        | Use multi-stage builds for smaller images |
 | **Shell Script** | `start.sh`             | `CMD ["sh", "start.sh"]`               | Or `bash` if needed |
 
+
+### Docker network 
+Docker networking is how containers—those isolated environments running your applications—talk to each other and the outside world. Think of containers as little boxes: networking is the phone line connecting them or letting them call out.
+
+* Isolation: Each container has its own network space, keeping things secure and separate.
+* Communication: Containers often need to work together, like a web app chatting with a database.
+* External Access: Sometimes, you want the world (or at least your computer) to reach a container, like accessing a website.
+
+#### The Basics of Docker Networking
+Docker uses network drivers to control how containers connect. These are like different types of roads containers can travel on. Here are the main ones:
+
+1. **`Bridge`**: The default "road" for containers on the same computer.
+2. **`Host`**: Containers share the computer's network directly.
+3. **`Overlay`**: Connects containers across multiple computers.
+4. **`Macvlan`**: Gives containers their own network identity, like real devices.
+5. **`None`**: No networking at all—total isolation.
+
+When you install Docker, it sets up three default networks:
+
+* bridge: For basic container connections.
+* host: For using the computer’s network.
+* none: For no networking.
+
+##### 1. **`Bridge Network: The Starting Point`**
+The bridge network is Docker’s default. It’s like a virtual switch connecting containers on the same computer. If you don’t pick a network, your container uses this one.
+
+**`Example 1: Running a Container on the Default Bridge`**
+```
+docker run -d --name web1 nginx
+```
+* **`-d`**: Runs it in the background.
+* **`--name web1`**: Names the container "web1".
+* **`nginx`**: The image (a web server).
+
+
+Check the network details:
+```
+docker network inspect bridge
+```
+* This shows the bridge network’s info, including web1’s IP address (e.g., 172.17.0.2). Each container gets its own IP here.
+* Containers on the bridge network can ping each other using IPs. But Docker also has a built-in DNS system for names.
+
+**`Example 2: Connecting Two Containers`**
+```
+docker run -d --name web2 nginx
+```
+Now, from web1, ping web2 by name:
+```
+docker exec -it web1 ping web2
+```
+* **`docker exec -it`**: Runs a command inside web1.
+* **`ping web2`**: Tests if web1 can reach web2.
+
+It works! Docker’s DNS translates web2 to its IP automatically.
+
+
+**`Example 3: Mapping a Port`**
+To access a container from your computer, map a container port to a host port.
+```
+docker run -d -p 8080:80 --name web3 nginx
+```
+* **`-p 8080:80`**: Maps port 8080 (host) to port 80 (container).
+Open your browser and go to http://localhost:8080. You’ll see nginx’s welcome page!
+
+##### 2. **`Custom Bridge Networks: Leveling Up`**
+The default bridge has limits (e.g., DNS isn’t always automatic). Create your own bridge network for more control.
+
+**`Example 4: Making a Custom Network`**
+
+Create a network called mynetwork:
+```
+docker network create mynetwork
+```
+Run two containers on it:
+```
+docker run -d --network mynetwork --name web4 nginx
+```
+```
+docker run -d --network mynetwork --name web5 nginx
+```
+Test communication:
+```
+docker exec -it web4 ping web5
+```
+It works, and DNS resolves names perfectly. Custom networks are better for projects with multiple containers.
+
+##### **`3. Host Network: No Isolation`**
+The host network lets a container use the computer’s network directly. No separate IP—it’s like the container is part of the host.
+
+**`Example 5: Using the Host Network`**
+```
+docker run -d --network host --name web6 nginx
+```
+Since it’s on the host network, nginx’s port 80 is directly on your computer. Visit http://localhost:80—it works! No port mapping needed (or allowed).
+
+* Note: This reduces isolation, so use it carefully.
+
+##### 4. **`None Network: Total Isolation`**
+The none network cuts off all networking. It’s perfect for containers that don’t need to talk to anyone.
+
+**`Example 6: No Networking`**
+```
+docker run -d --network none --name isolated busybox sleep 3600
+```
+* **`busybox`**: A tiny image.
+* **`sleep 3600`**: Keeps it running for an hour.
+Try pinging from it:
+```
+docker exec -it isolated ping google.com
+```
+It fails—no network, no connection!
+
+##### 5. **`Overlay Network: Multi-Computer Magic`**
+The overlay network connects containers across different computers. It’s used with Docker Swarm (a tool for managing multiple Docker hosts).
+
+**`Example 7: Setting Up an Overlay Network`**
+```
+docker swarm init
+```
+Create an overlay network:
+```
+docker network create -d overlay myoverlay
+```
+Run a service:
+```
+docker service create --network myoverlay --name web8 nginx
+```
+Now, containers (or services) on myoverlay can talk across hosts. This is advanced, so try it once you’re comfortable with single-host setups.
+
+##### 6. **`Macvlan Network: Containers as Devices`**
+The macvlan network gives containers their own MAC address and IP, making them act like physical devices on your network.
+
+**`Example 8: Creating a Macvlan Network`**
+Set up a network (adjust eth0 to your network interface):
+```
+docker network create -d macvlan \
+  --subnet=192.168.1.0/24 \
+  --gateway=192.168.1.1 \
+  -o parent=eth0 \
+  mymacvlan
+
+```
+Run a container with a specific IP:
+```
+docker run -d --network mymacvlan --ip=192.168.1.100 --name web7 nginx
+```
+* Access it at http://192.168.1.100 from another device on your network!
+
+* Caution: Ensure IPs don’t conflict with other devices.
+
+#### Network Scopes
+**`Local`**: For one computer (bridge, host, etc.).
+**`Swarm`**: Across multiple computers (overlay).
+#### Service Discovery
+In Swarm, containers find each other by service names—super handy for big setups.
+
+#### Load Balancing
+Swarm balances traffic across multiple containers automatically.
+
+#### Network Policies
+Control who talks to whom (more common in tools like Kubernetes).
+
+
+
+
 ## Web server & Application server
 
 ### What is a Web Server?

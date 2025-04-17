@@ -878,6 +878,168 @@ Mounting the Docker socket into a container grants it full control over the host
 * Mounting the socket into a container allows it to control the host's Docker daemon.
 * Always exercise caution when mounting the Docker socket to prevent security issues.
 
+### Docker copy
+The docker cp command allows you to transfer files or directories between a running (or stopped) Docker container and the host filesystem. It works similarly to the cp command in Linux but is designed for Docker environments.
+
+Syntax:
+```
+docker cp [SOURCE_PATH] [DESTINATION_PATH]
+```
+* **`SOURCE_PATH`**: The file or directory to copy (on the host or in the container).
+
+* **`DESTINATION_PATH`**: The destination for the copied file or directory (on the host or in the container).
+
+* For containers, the path is specified as container_name:/path or container_id:/path.
+
+#### Copying a File from Host to Container
+
+To copy a file from the host system to a container, specify the host file path as the source and the container's path as the destination.
+
+Example:
+
+Suppose you have a file config.txt on your host at /home/user/config.txt and want to copy it to a container named my-container at /app/config.txt.
+```
+docker cp /home/user/config.txt my-container:/app/config.txt
+```
+This copies config.txt from the host to the /app directory inside my-container.
+
+#### Copying a File from Container to Host
+
+To copy a file from a container to the host, specify the container's file path as the source and the host path as the destination.
+
+Example:
+
+Suppose a container named my-container has a log file at /app/log.txt, and you want to copy it to /home/user/log.txt on the host.
+```
+docker cp my-container:/app/log.txt /home/user/log.txt
+```
+This copies log.txt from the container to the host's /home/user directory.
+
+* **`Container State`**: The container can be running or stopped when using docker cp.
+
+* **`Paths`**: Ensure the source file exists and the destination path is valid. For containers, use the format container_name:/path.
+
+* **`Permissions`**: The copied files retain their permissions, but the user running docker cp must have appropriate access.
+
+* **`Directories`**: To copy entire directories, the syntax is the same (e.g., docker cp my-container:/app /home/user/app).
+
+* **`Verification`**: Use docker exec to check files inside the container (e.g., docker exec my-container ls /app).
+
+* Always verify the container name or ID with docker ps or docker ps -a to avoid errors.
+
+### Docker Volumes
+
+Docker volumes are storage mechanisms that exist outside of a container's filesystem. They allow data to persist even if a container is stopped or removed and can be shared between containers. Volumes are managed by Docker or defined by the user, depending on the type.
+
+#### Types of Docker Volumes
+
+There are three main types of volumes in Docker:
+
+##### 1. Anonymous Volumes:
+
+Temporary volumes created automatically by Docker when no specific name is provided.
+
+* Identified by a random ID and not easily reusable.
+
+* Best for temporary or single-use data that doesn’t need to be referenced later.
+
+##### 2. Named Volumes:
+
+Volumes with a user-defined name, managed by Docker.
+
+* Stored in Docker’s storage area (e.g., /var/lib/docker/volumes/ on Linux).
+
+* Ideal for persistent data that needs to be reused or shared across containers.
+
+##### 3. Bind Mounts:
+
+Direct mappings of a specific folder or file from the host filesystem into the container.
+
+* Not managed by Docker; the user controls the source path on the host.
+
+* Useful when you need precise control over the data location or want to use existing host files.
+
+Creating a Named Volume
+```
+docker volume create my-volume
+```
+Listing Volumes
+```
+docker volume ls
+```
+Inspecting a Volume
+```
+docker volume inspect my-volume
+```
+Removing a Volume
+```
+docker volume rm my-volume
+```
+
+**`Example 1: Using an Anonymous Volume for Temporary Data`**
+
+**`Scenario`**: You’re running a container to process some temporary data, and you don’t need the data after the container stops.
+```
+docker run -d -v /app/data my-image
+```
+
+* **`The -v /app/data`** creates an anonymous volume mapped to /app/data inside the container.
+
+* Docker assigns a random ID to this volume (visible via docker volume ls).
+
+* The container writes data to /app/data, but when the container is removed, the volume is typically deleted unless explicitly preserved.
+
+* Use Case: Temporary storage for one-off tasks, like processing a dataset that doesn’t need to be saved.
+
+**`Example 2: Using a Named Volume for a Database`**
+
+**`Scenario`**: You want to run a PostgreSQL database and ensure its data persists even if the container is deleted.
+```
+docker run -d -v postgres-data:/var/lib/postgresql/data postgres:latest
+```
+**`The -v postgres-data:/var/lib/postgresql/data`** uses a named volume called postgres-data.
+
+* If postgres-data doesn’t exist, Docker creates it automatically.
+
+* PostgreSQL stores its database files in /var/lib/postgresql/data, which is linked to the postgres-data volume.
+
+* If the container is stopped or removed, the database data remains in postgres-data and can be reused by a new container.
+
+* Use Case: Persistent storage for databases or applications where data must survive container restarts.
+
+**`Example 3: Using a Bind Mount for Development`**
+
+**`Scenario`**: You’re developing a web app and want the container to use code from a folder on your host machine, so changes are reflected instantly.
+```
+docker run -d -v /home/user/code:/app my-web-app
+```
+
+* **`The -v /home/user/code:/app`** creates a bind mount, linking the host’s /home/user/code folder to /app in the container.
+
+* Any changes to files in /home/user/code on the host (e.g., editing code) are immediately visible in the container’s /app folder, and vice versa.
+
+* Unlike Docker-managed volumes, the /home/user/code folder is entirely controlled by the host’s filesystem.
+
+* Use Case: Real-time development, where you edit code on the host and want the container to use the updated files without rebuilding the image.
+
+**`Example 4: Sharing a Named Volume Between Containers`**
+
+**`Scenario`**: Two containers (e.g., a web app and a log processor) need to share the same log files.
+```
+docker volume create log-volume
+docker run -d -v log-volume:/app/logs web-app
+docker run -d -v log-volume:/app/logs log-processor
+```
+
+* The log-volume is a named volume shared by both containers.
+
+* The web-app container writes logs to /app/logs, which are stored in log-volume.
+
+* The log-processor container reads from the same /app/logs path, accessing the same log files.
+
+* This setup ensures both containers work with the same data seamlessly.
+
+* Use Case: Sharing data like logs, configuration files, or datasets between multiple containers.
 
 ## Web server & Application server
 

@@ -1041,6 +1041,222 @@ docker run -d -v log-volume:/app/logs log-processor
 
 * Use Case: Sharing data like logs, configuration files, or datasets between multiple containers.
 
+| Type        | Managed by Docker? | Persistent? | Reusable? | Example Use Case                      |
+|-------------|--------------------|-------------|-----------|----------------------------------------|
+| Anonymous   | Yes                | Temporary   | No        | Temporary data for one-off tasks       |
+| Named       | Yes                | Yes         | Yes       | Persistent database storage            |
+| Bind Mount  | No                 | Yes         | Yes       | Development with host code             |
+
+* Use anonymous volumes for temporary data you don’t need to keep.
+
+* Use named volumes for important data that needs to persist or be shared.
+
+* Use bind mounts when you need direct control over files on the host.
+
+* Check volumes with docker volume ls to avoid clutter.
+
+* Be cautious with bind mounts, as incorrect host paths can cause errors.
+
+### Docker Compose
+Docker Compose is a tool for defining and running multi-container Docker applications. It uses a YAML file (usually called docker-compose.yml) to describe your application's components—called services—like a web server or database, how they connect, and where their data is stored. With one command, you can start or stop everything, making it perfect for development, testing, and even small-scale production setups.
+
+#### Why Use Docker Compose?
+* **`Easier Management`**: Define everything in one file instead of running multiple Docker commands.
+* **`Consistency`**: Ensures your application runs the same way on every machine.
+* **`Quick Setup`**: Spin up complex environments fast, great for developers and students.
+* **`Teamwork`**: Share the file with others to replicate your setup exactly.
+* **`Flexibility`**: Adjust and scale your app with minimal effort.
+
+#### Key Concepts of Docker Compose
+Before we jump into examples, let’s cover the essentials:
+
+* **`Services`**: These are the containers in your app, like a web server or a database. Each service is defined in the Compose file and runs its own container.
+* **`Networks`**: These let your services talk to each other. Docker Compose automatically creates a network, but you can customize it.
+* **`Volumes`**: These store data so it’s not lost when containers stop. Think of them as external hard drives for your containers.
+
+#### The Docker Compose File
+The docker-compose.yml file is where everything happens. It’s written in YAML, a simple format that’s easy to read and write. Here’s what it typically includes:
+
+**`Version`**: The format of the file (e.g., '3.8').
+**`Services`**: The containers you want to run.
+**`Networks`**: How services connect.
+**`Volumes`**: Where data is saved.
+Here’s a basic example structure:
+```
+version: '3.8'
+services:
+  app:
+    image: my-app-image
+    ports:
+      - "8000:80"
+    volumes:
+      - app_data:/app
+    networks:
+      - my_network
+volumes:
+  app_data:
+networks:
+  my_network:
+
+```
+
+**`Let’s create a docker-compose.yml file for a basic web application with a web server and a database. Here’s the file:`**
+```
+version: '3.8'
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - web_data:/usr/share/nginx/html
+    networks:
+      - app_network
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app_network
+volumes:
+  web_data:
+  db_data:
+networks:
+  app_network:
+
+```
+
+* **`version: '3.8'`**: This tells Docker Compose which version of its file format we’re using. Version 3.8 is modern and supports most features. It’s like saying, “This is the rulebook I’m following.”
+
+* **`services`**: This section lists all the containers (services) in your app. Here, we have two: web and db.
+
+* **`web`**: (The Web Server):
+
+* **`image`**: nginx:latest:
+This uses the official Nginx image from Docker Hub (a library of pre-built images). Nginx is a popular web server, and latest grabs the newest version.
+
+* **`ports: - "8080:80"`**:
+This maps port 8080 on your computer (the host) to port 80 inside the container, where Nginx listens. So, you can visit http://localhost:8080 in your browser to see the web server.
+
+* **`volumes: - web_data:/usr/share/nginx/html:`**
+This links a volume called web_data to the folder /usr/share/nginx/html inside the container. That’s where Nginx looks for web files (like HTML pages). If you put files in web_data, they’ll show up on the site.
+
+* **`networks: - app_network`**:
+This connects the web service to a network called app_network, so it can talk to other services (like db).
+
+* **`db: (The Database)`**:
+* **`image: mysql:5.7`**:
+This uses MySQL version 5.7, a widely-used database. The image comes from Docker Hub.
+
+* **`environment: MYSQL_ROOT_PASSWORD`**:
+This sets an environment variable inside the container. MySQL uses it to set the root user’s password to “example.” Environment variables configure the service without changing the image.
+
+* **`volumes: - db_data:/var/lib/mysql`**:
+This links a volume called db_data to /var/lib/mysql, where MySQL stores its database files. Even if the container stops, your data stays safe in db_data.
+
+* **`networks: - app_network`**:
+This puts the db service on the same network as web, so they can communicate (e.g., the web app could query the database).
+
+* **`web_data: and db_data`**:
+These declare two named volumes. They’re like storage buckets managed by Docker. Without them, data would vanish when containers stop.
+
+* **`app_network`**:
+This creates a custom network for our services. They can find each other by their service names (web or db) instead of IP addresses.
+
+##### What Happens When You Run This?
+
+* Type docker-compose up in your terminal (in the same folder as the file).
+
+* Docker Compose downloads the Nginx and MySQL images, starts the containers, sets up the network, and creates the volumes.
+
+* Visit http://localhost:8080 to see Nginx’s default page. The MySQL database runs in the background with the password “example.”
+
+#### Advanced Features of Docker Compose
+
+##### Environment Variables
+You can customize services using environment variables. Add more to the db service:
+```
+services:
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: myapp_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+
+```
+
+* MYSQL_DATABASE: Creates a database called myapp_db.
+
+* MYSQL_USER and MYSQL_PASSWORD: Add a user “user” with password “pass” for safer access.
+
+##### Dependencies Between Services
+If your web app needs the database to start first, use depends_on:
+```
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+
+```     
+* depends_on: - db: Ensures db starts before web. Note: It doesn’t wait for the database to be fully ready—just started. For that, you might need extra scripting.
+
+##### Scaling Services
+Want multiple web servers? Scale them:
+```
+docker-compose up --scale web=3
+```
+
+* This runs three web containers. Each gets a unique name (e.g., web_1, web_2, web_3). Useful for load testing or distributed apps.
+
+#### Docker Compose Commands
+
+Start Everything:
+```
+docker-compose up
+```
+
+* Add -d to run in the background: docker-compose up -d.
+
+Stop Everything:
+```
+docker-compose down
+```
+
+* Stops and removes containers and networks. Add --volumes to delete volumes too.
+
+Build Custom Images:
+```
+docker-compose build
+```
+
+* If a service uses a build section (e.g., from a Dockerfile), this builds it.
+
+Check Logs:
+```
+docker-compose logs
+```
+
+* See output from all services. Add -f to watch live: docker-compose logs -f.
+Run a Command:
+```
+docker-compose run db mysql -u root -p
+```
+
+* Runs the MySQL client in the db service to interact with the database.
+
+Docker Compose takes the complexity out of managing multi-container apps. With a single file, you can define services, connect them, and persist data—all launched with one command. This guide covered the basics (services, networks, volumes), walked through a detailed example, and introduced advanced features like scaling and dependencies. Now, you’re ready to build your own setups, troubleshoot issues, and even teach Docker Compose to others. Experiment with it, tweak the examples, and watch your Docker skills soar!
+
 ## Web server & Application server
 
 ### What is a Web Server?

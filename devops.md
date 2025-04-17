@@ -588,6 +588,73 @@ Common CMD Commands in Dockerfile for Popular Languages:
 | **Rust**       | compiled binary `app`    | `CMD ["./app"]`                        | Use multi-stage builds for smaller images |
 | **Shell Script** | `start.sh`             | `CMD ["sh", "start.sh"]`               | Or `bash` if needed |
 
+#### Difference Between CMD and ENTRYPOINT in Dockerfile
+
+In a Dockerfile, the CMD and ENTRYPOINT instructions define what command runs when a container starts from the image. While they may seem similar, they serve distinct purposes and can be used together for greater flexibility. Below, their differences are explained in a simple and clear manner.
+
+##### CMD Instruction
+
+The CMD instruction specifies the default command to run when a container starts. If no command is provided during container execution, CMD is used. However, if a command is specified, it overrides the CMD.
+
+Example:
+
+Suppose your Dockerfile contains:
+```
+CMD ["echo", "Hello World"]
+```
+
+Running docker run myimage outputs 
+* "Hello World".
+
+Running docker run myimage echo "Goodbye" outputs
+* "Goodbye".
+
+##### ENTRYPOINT Instruction
+
+The ENTRYPOINT instruction defines a command that is always executed when the container starts. Unlike CMD, if arguments are provided during container execution, they are appended to the ENTRYPOINT command, not replaced.
+
+Example:
+
+Suppose your Dockerfile contains:
+```
+ENTRYPOINT ["echo"]
+```
+Running docker run myimage Hello outputs 
+* "Hello".
+Running docker run myimage without arguments 
+* may produce no output (depending on the command).
+
+##### Using ENTRYPOINT and CMD Together
+
+When used together, ENTRYPOINT sets the main command, and CMD provides its default arguments. This allows a fixed command with customizable arguments.
+
+Example:
+
+Suppose your Dockerfile contains:
+```
+ENTRYPOINT ["echo"]
+CMD ["Hello World"]
+```
+
+Running docker run myimage outputs 
+* "Hello World".
+
+Running docker run myimage Goodbye outputs 
+* "Goodbye".
+
+###### Key Differences
+
+* **`CMD`**: Sets a default command that can be completely overridden.
+* **`ENTRYPOINT`**: Sets a fixed command, with additional arguments appended.
+  * **`Together`**: ENTRYPOINT keeps the command fixed, while CMD provides default arguments that can be changed.
+
+###### When to Use Which?
+
+* Use **`CMD`** for a default command that users can override.
+
+* Use **`ENTRYPOINT`** for a command that must always run, with optional arguments.
+
+* Use **`both`** for a fixed command with default, changeable arguments.
 
 ### Docker network 
 Docker networking is how containers—those isolated environments running your applications—talk to each other and the outside world. Think of containers as little boxes: networking is the phone line connecting them or letting them call out.
@@ -686,8 +753,8 @@ Since it’s on the host network, nginx’s port 80 is directly on your computer
 * Note: This reduces isolation, so use it carefully.
 
 ##### 4. **`None Network: Total Isolation`**
-The none network cuts off all networking. It’s perfect for containers that don’t need to talk to anyone.
-
+The none network cuts off all networking. It’s perfect for containers that don’t need to talk to anyone. 
+* You cannot directly transition a Docker container from none network mode to host network mode 
 **`Example 6: No Networking`**
 ```
 docker run -d --network none --name isolated busybox sleep 3600
@@ -750,7 +817,66 @@ Swarm balances traffic across multiple containers automatically.
 #### Network Policies
 Control who talks to whom (more common in tools like Kubernetes).
 
+#### Docker Network Connect
 
+The docker network connect command attaches a running or stopped container to an existing network, allowing it to communicate with other containers or services on that network.
+
+Syntax:
+```
+docker network connect [OPTIONS] NETWORK CONTAINER
+```
+* **`Example: Connect a container to a network named "my-network`**
+```
+docker network connect my-network my-container
+```
+This connects my-container to my-network, enabling communication with other containers in that network.
+
+#### Docker Network Disconnect
+
+The docker network disconnect command detaches a container from a specified network, isolating it from other containers or services on that network.
+
+Syntax:
+```
+docker network disconnect [OPTIONS] NETWORK CONTAINER
+```
+* **`Example: Disconnect a container from "my-network`**
+```
+docker network disconnect my-network my-container
+```
+This removes my-container from my-network, stopping communication with that network's resources.
+
+
+* A container can be connected to multiple networks simultaneously.
+* Use docker network ls to list available networks.
+* Use docker inspect <container> to verify a container's network connections.
+* The container's primary network (set at creation with --network) cannot be disconnected without stopping and recreating the container.
+* Always ensure the container and network names or IDs are correct to avoid errors.
+
+### Docker socket
+
+The Docker socket is a Unix socket typically located at /var/run/docker.sock. It acts as a bridge, allowing the Docker CLI to send commands to the Docker daemon. The daemon is responsible for managing containers, images, networks, and more. Every time you run a Docker command like docker run or docker ps, the CLI communicates with the daemon through this socket.
+
+#### Connecting the Docker Socket to a Container
+One common use of the Docker socket is to mount it into a container. This allows the container to send commands to the host's Docker daemon, effectively managing other containers. This is particularly useful for tools like CI/CD systems (such as Jenkins) that need to start, stop, or manage containers as part of their workflow.
+
+* **`Example: Running Jenkins with Access to the Docker Socket`**
+Suppose you want to run Jenkins in a container and allow it to manage other containers on the host. You can achieve this by mounting the host's Docker socket into the Jenkins container:
+```
+docker run -v /var/run/docker.sock:/var/run/docker.sock -d jenkins/jenkins
+```
+
+* **`-v /var/run/docker.sock:/var/run/docker.sock`** mounts the host's Docker socket to the same path inside the container.
+* **`-d`** runs the container in detached mode.
+* **`jenkins/jenkins`** is the image used to run Jenkins.
+Once the container is running, Jenkins can use the Docker CLI inside the container to communicate with the host's Docker daemon and manage other containers.
+
+#### Security Notes
+Mounting the Docker socket into a container grants it full control over the host's Docker daemon. This means the container can perform any action the daemon can, such as starting or stopping containers, pulling images, and more. Therefore, this should only be done with trusted containers, as a compromised container could pose serious security risks.
+
+* The Docker socket is essential for communication between the Docker CLI and the daemon.
+* It is a Unix socket located at /var/run/docker.sock.
+* Mounting the socket into a container allows it to control the host's Docker daemon.
+* Always exercise caution when mounting the Docker socket to prevent security issues.
 
 
 ## Web server & Application server

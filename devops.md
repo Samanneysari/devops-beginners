@@ -1257,6 +1257,70 @@ docker-compose run db mysql -u root -p
 
 Docker Compose takes the complexity out of managing multi-container apps. With a single file, you can define services, connect them, and persist data—all launched with one command. This guide covered the basics (services, networks, volumes), walked through a detailed example, and introduced advanced features like scaling and dependencies. Now, you’re ready to build your own setups, troubleshoot issues, and even teach Docker Compose to others. Experiment with it, tweak the examples, and watch your Docker skills soar!
 
+### Docker Swarm
+Docker Swarm is a tool that helps you manage multiple Docker containers across several machines. Imagine it as a team leader organizing a group of workers (containers) to complete tasks efficiently. It’s a built-in solution from Docker to orchestrate and scale your applications.
+
+* **`Node`**: A computer (physical or virtual) in the Swarm.
+
+* **`Service`**: Instructions for what a container should do, like running a website.
+
+* **`Task`**: A single running container based on a service.
+
+* **`Stack`**: A group of services that form an application.
+
+#### Swarm has two types of nodes:
+
+* **`Manager Nodes`**: These lead the Swarm, assign tasks, and keep everything running smoothly.
+
+* **`Worker Nodes`**: These follow the manager’s instructions and run the tasks.
+
+#### Setting Up a Swarm
+To create a Swarm, you start with one machine as the manager. Use this command:
+```
+docker swarm init
+```
+This makes your machine the manager node. 
+
+To add more machines (worker nodes), the manager gives you a special code (token). On another machine, run:
+```
+docker swarm join --token <token> <manager-ip>:<port>
+```
+Now your Swarm is growing!
+
+#### Deploying Services in docker swarm
+With your Swarm ready, you can deploy services. For example, to run a web server with three copies:
+```
+docker service create --name webserver --replicas 3 nginx
+```
+This creates a service called "webserver" with three instances of the Nginx container, spread across your nodes. 
+To increase or decrease the number of copies:
+```
+docker service scale webserver=5
+```
+This changes it to five instances.
+
+#### Managing the Swarm
+You need to keep an eye on your Swarm. Check all services with:
+```
+docker service ls
+```
+To see details about a specific service:
+```
+docker service ps webserver
+```
+If you update a service (like using a newer version of Nginx):
+```
+docker service update --image nginx:1.19 webserver
+```
+If something goes wrong, Swarm lets you undo the change.
+
+#### Benefits of Using Docker Swarm
+* **`Simple`**: It uses the same Docker commands you already know.
+
+* **~`Scalable`~**: Add or remove copies of your service as needed.
+
+* **`Works with Docker`**: Fits perfectly with other Docker tools.
+
 ## Web server & Application server
 
 ### What is a Web Server?

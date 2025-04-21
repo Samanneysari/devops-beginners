@@ -1622,3 +1622,98 @@ For standard Nginx:
 For Docker:
 * Save the file in a directory on your computer, e.g., /path/to/my-loadbalancer/nginx.conf.
 * When running the Docker container, mount the file using -v /path/to/my-loadbalancer/nginx.conf:/etc/nginx/nginx.conf.
+
+
+## Git
+
+### What is Git
+Git is a tool that helps you keep track of changes to your files, especially when working on projects like coding or writing. Imagine it as a "time machine" for your work—it lets you save different versions of your files so you can go back if something goes wrong. It’s super popular with programmers, but anyone can use it to manage file changes.
+
+#### Why is Git Useful?
+**`Track Changes`**: Git saves every change you make, so you know what happened, when, and who did it.
+
+**`Teamwork`**: It lets many people work on the same project without messing up each other’s stuff.
+
+**`Backup`**: Your work is stored safely in multiple places.
+
+**`Try New Ideas`**: You can experiment without ruining the main project.
+
+#### Repository (Repo): 
+A folder with all your project files and their history—like a home for your work.
+
+#### Commit: 
+A saved version of your files at a certain time, like a snapshot.
+
+#### Branch: 
+A separate version of your project where you can work on new stuff without touching the main part.
+
+#### Merge:
+Mixing changes from one branch into another.
+
+### Basic Git Commands and What They Do
+Here are the most important Git commands you’ll use, explained simply:
+
+#### git init
+* What it does: Starts a new Git repository in your folder.
+
+* When to use it: When you begin a new project and want Git to track it.
+
+* Example: Type git init in your project folder to set it up.
+#### git add <file>
+
+* What it does: Adds a file to the "staging area" (like a prep zone) before saving it.
+
+* Tip: Use git add . to add all changed files at once.
+
+* Example: git add index.html prepares that file for a commit.
+
+#### git commit -m "message"
+
+* What it does: Saves your changes as a commit with a note (message) about what you did.
+
+* Example: git commit -m "Added a new button" saves your work with that description.
+
+#### git status
+* What it does: Shows what’s going on—like which files have changed or are ready to save.
+
+* When to use it: To check your project’s status before committing.
+
+#### git log
+* What it does: Lists all your commits with their messages and dates.
+
+* When to use it: To look at your project’s history.
+
+#### git branch
+* What it does: Shows all branches in your repository.
+
+* Tip: Use git branch new-feature to make a new branch called "new-feature".
+
+#### git checkout <branch>
+* What it does: Switches you to another branch to work on it.
+
+* Example: git checkout new-feature takes you to that branch.
+
+#### git merge <branch>
+* What it does: Brings changes from one branch into the one you’re on.
+
+* Example: git merge new-feature adds those changes to your current branch.
+
+#### git pull
+* What it does: Grabs updates from an online (remote) repository and adds them to your project.
+
+* When to use it: To get the latest changes from your team.
+
+#### git push
+* What it does: Sends your commits to an online repository so others can see them.
+
+* When to use it: After committing, to share your work.
+
+### Working with Remote Repositories
+Git often teams up with online platforms like GitHub or GitLab. These "remote repositories" let people work together. Here’s how:
+
+#### Clone: 
+Copy a remote repository to your computer with git clone <url>.
+#### Push: 
+Upload your changes with git push.
+#### Pull: 
+Download updates with git pull.

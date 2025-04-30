@@ -447,6 +447,103 @@ Fetches the logs of a container.
 ```
 docker logs nginx
 ```
+### Docker nexus
+1. Download the Docker image using following commands.
+```
+docker pull sonatype/nexus
+ ```
+2. Build an image from a Nexus Dockerfile# docker build –rm –tag sonatype/nexus oss/
+```
+docker build –rm –tag sonatype/nexus-pro pro/ (For Pro)
+```
+ 
+3. To run (if port 8081 is open on your host):
+```
+docker run -d -p 8081:8081 –name nexus sonatype/nexus:oss
+```
+or to assign a random port that maps to port 8081 on the container:
+```
+docker run -d -p 8081 –name nexus sonatype/nexus
+ ```
+
+4. To determine the port that the container is listening on:
+```
+docker ps nexus
+ ```
+
+5. To test:
+```
+curl http://localhost:8081/service/local/status
+ ```
+
+6. To go into the container
+```
+docker exec -it <containerid> bash
+```
+7. admin password
+```
+cat /nexus-data/admin.password
+```
+8. example
+```
+sudo docker run -d --name nexus12 -p 8081:8081 -p 8082:8082 -v nexus-data:/nexus-data docker.arvancloud.ir/sonatype/nexus3:3.74.0
+```
+9. delete and install again
+```
+sudo docker stop nexus12
+```
+```
+sudo docker rm nexus 12
+```
+```
+ sudo docker volume rm nexus-data
+ ```
+  Repository
+### nexus errors
+When trying to pull Docker images from our Nexus repository, we encounter the following error:
+```
+http: server gave HTTP response to HTTPS client
+```
+This happens because our Nexus Docker repository is configured to use HTTP, but Docker by default expects all registries to use HTTPS for security reasons.
+
+Solution
+To allow Docker to pull images from an insecure (HTTP) registry, we need to configure the Docker daemon to trust the Nexus registry.
+
+
+1. Find the IP Address or Domain Name of Your Nexus Server
+Example: 192.168.1.100:8082 or nexus.example.com:8082
+
+2. Edit Docker's daemon.json File
+Open the file (create it if it doesn't exist):
+```
+sudo nano /etc/docker/daemon.json
+```
+3. Add the Insecure Registry Configuration
+Add or modify the file to include the following:
+```
+{
+  "insecure-registries": ["192.168.1.100:8082"]
+}
+```
+Replace 192.168.1.100:8082 with your actual Nexus IP and port.
+
+
+If there are already other settings inside daemon.json, make sure the JSON syntax remains valid (commas between entries, proper braces {}).
+
+4. Restart Docker Service
+After saving the file, restart Docker to apply the changes:
+```
+sudo systemctl restart docker
+```
+5. Test the Configuration
+Try pulling an image from your Nexus repository:
+```
+docker pull 192.168.1.100:8082/your-repo/your-image:tag
+```
+If everything is set correctly, the pull should now succeed without HTTPS errors.
+
+
+
 ### Writing a Dockerfile
 
 #### 1. Navigate to Your Project Directory
@@ -1717,3 +1814,266 @@ Copy a remote repository to your computer with git clone <url>.
 Upload your changes with git push.
 #### Pull: 
 Download updates with git pull.
+
+
+## What is GitLab?
+
+GitLab is a web-based platform that provides a complete DevOps solution, enabling teams to plan, build, secure, and deploy software efficiently. It is built on Git, a distributed version control system, and offers tools to manage the entire software development lifecycle. GitLab can be hosted on your own servers (self-hosted) or used as a cloud-based service, making it flexible for teams and organizations of any size.
+
+### What Are the Uses of GitLab?
+
+GitLab serves several key purposes in software development:
+
+* **`Version Control`**: It allows developers to track and manage changes to code, keeping a history of modifications. This ensures collaboration without losing earlier versions.
+
+* **`Issue Tracking`**: Teams can create and manage tasks, bugs, or feature requests, keeping projects organized.
+
+* **`CI/CD Automation`**: GitLab automates building, testing, and deploying code, speeding up software releases.
+
+* **`Code Review`**: It provides tools to review code changes, ensuring quality and consistency.
+
+* **`Project Management`**: Features like milestones and boards help plan and track progress.
+
+* **`Security and Compliance`**: GitLab includes tools to scan for vulnerabilities and enforce standards.
+
+For example, a team might use GitLab to store a mobile app’s code, track a reported crash, and deploy a fix automatically.
+
+### What Are the Advantages of GitLab?
+Using GitLab offers numerous benefits:
+
+* **`All-in-One Platform`**: It integrates tools for coding, tracking, and deployment into one interface, simplifying workflows.
+
+* **`Open-Source`**: Its open-source nature allows customization, such as adding unique features.
+
+* **`Scalability`**: It works for small startups and large enterprises alike.
+
+* **`Security`**: Features like access controls and vulnerability scanning protect code and data.
+
+* **`Collaboration`**: Tools like merge requests and comments improve teamwork.
+
+For instance, a company might use GitLab to securely collaborate on a confidential project while automating repetitive tasks.
+
+### What Happens If GitLab Is Not Used in a System?
+Without GitLab or a similar tool, teams face challenges:
+
+* **`No Version Control`**: Code changes are hard to track, risking errors like overwriting work.
+
+* **`Manual Processes`**: Testing and deployment become slow and error-prone without automation.
+
+* **`Poor Collaboration`**: Lack of a shared platform leads to miscommunication or delays.
+
+* **`Security Risks`**: Without access controls, sensitive code could be exposed.
+
+For example, a team might accidentally deploy broken code without a system to test changes first.
+
+### Groups
+A group is a way to organize related projects and users under one namespace. For example, a university might create a group called “CS_Department” for computer science projects.
+
+Creating a Group:
+
+1. Go to the “Groups” menu and click “Create group.”
+
+2. Name: Enter a unique name, e.g., “CS_Department.”
+
+3. Description: Add a brief purpose, e.g., “Computer science research projects.”
+
+4. Visibility Level: Choose who can see it:
+
+* **`Private`**: Only group members can access it (e.g., for confidential research).
+
+* **`Internal`**: All logged-in users on the instance (except external users) can see it (e.g., for university-wide projects).
+
+* **`Public`**: Anyone, even without an account, can view it (e.g., for open-source work).
+
+
+### Projects
+A project is a repository that holds code, issues, and resources. It belongs to a user or group.
+
+1. Go to “Projects” and click “Create a project.”
+
+2. Name: Enter a name, e.g., “WebsiteUpdate.”
+
+3. Description: Add details, e.g., “Updating the university website.”
+
+4. Visibility Level: Select Private, Internal, or Public (same as groups).
+
+5. Initialize with README: Optionally, add a README file to start documentation.
+
+
+### Users
+Users are individuals with GitLab accounts who work on groups and projects.
+
+1. In a group or project, go to “Members” in the Settings menu.
+
+2. Invite by Email: Enter the user’s email (e.g., “student@university.com”).
+
+3. Select Role: Assign a role (see “Roles” below).
+
+4. Access Level: Choose group or project access.
+
+5. Click “Invite.”
+
+
+#### Roles
+Roles define a user’s permissions in a group or project. GitLab has five main roles:
+
+1. **`Guest`**: Can view issues and comment but not edit code.
+
+2. **`Reporter`**: Can view code, create issues, and comment but not push code.
+
+3. **`Developer`**: Can push code, create branches, and manage issues but not configure settings.
+
+4. **`Maintainer`**: Can manage settings, merge branches, and add members but not delete projects.
+
+5. **`Owner`**: Full control, including deleting projects and managing everything.
+
+#### Visibility Levels Explained
+When setting up groups or projects, you choose a visibility level:
+
+1. **`Private`**: Only added members can access it. Example: A private project for a secret app.
+
+2. **`Internal`**: Visible to all logged-in users on the instance (except external users). Example: An internal HR group for employees.
+
+3. **`Public`**: Open to everyone, even without an account. Example: A public library for global use.
+
+
+### Issues
+Issues track tasks, bugs, or requests.
+
+1. In a project, go to “Issues” and click “New issue.”
+
+2. Title: E.g., “Fix login error.”
+
+3. Description: Detail the problem.
+
+4. Assignee: Assign to a user.
+
+5. Labels: Add tags like “bug” or “urgent.”
+
+6. Milestone: Link to a deadline.
+
+7. Click “Create issue.”
+
+### Merge Requests
+Merge Requests (MRs) propose and review code changes.
+
+1. Go to “Merge Requests” and click “New merge request.”
+
+2. Source Branch: Select the changed branch.
+
+3. Target Branch: Choose “main” or another branch.
+
+4. Title and Description: Explain the changes.
+
+5. Assignees and Reviewers: Add team members.
+
+6. Click “Create merge request.”
+
+### CI/CD
+CI/CD automates code building, testing, and deployment.
+
+1. In the project, go to “CI/CD” settings.
+
+2. Create a .gitlab-ci.yml file in the repository.
+
+3. Define jobs (e.g., “build,” “test,” “deploy”).
+
+4. Use GitLab runners to execute jobs.
+
+### Wiki
+Wiki stores project documentation.
+
+1. Go to “Wiki” in the project menu.
+
+2. Click “Create your first page.”
+
+3. Title: E.g., “Setup Guide.”
+
+4. Content: Write using Markdown.
+
+5. Click “Save.”
+
+### Snippets
+Snippets share small code or text pieces.
+
+1. Go to “Snippets” and click “New snippet.”
+
+2. Title: E.g., “Config Script.”
+
+3. Content: Paste the code.
+
+4. Visibility: Choose Public or Private.
+
+5. Click “Create snippet.”
+
+### Container Registry
+Container Registry stores Docker images.
+
+1. Go to “Container Registry” in the project.
+
+2. Push an image using Docker commands.
+
+3. Pull images for deployment.
+
+### Packages
+Packages manage libraries like npm or Maven.
+
+1. Go to “Packages & Registries.”
+
+2. Choose a package type (e.g., npm).
+
+3. Publish using provided commands.
+
+### Security & Compliance
+Security & Compliance scans code for issues.
+
+Enabling Scans:
+
+1. Go to “Security & Compliance.”
+
+2. Enable SAST, DAST, or Dependency Scanning in CI/CD settings.
+
+
+### Operations
+Operations manages deployments and monitoring.
+
+1. Go to “Operations” > “Environments.”
+
+2. Define “staging” or “production.”
+
+3. Monitor with metrics.
+
+### Analytics
+Analytics provides project insights.
+
+1. Go to “Analytics.”
+
+2. View Contribution, Cycle, or Code Review Analytics.
+
+### Settings
+Settings configures groups/projects.
+
+1. Go to “Settings.”
+
+2. Adjust General, Members, Integrations, or Webhooks.
+
+### Additional Features
+
+1. **`Feature Flags`**: Test features with specific users (e.g., “new_ui” for 10% of users).
+
+2. **`Boards`**: Visualize issues/epics (e.g., “To Do” to “Done”).
+
+3. **`Milestones`**: Set deadlines (e.g., “Version 1.0”).
+
+4. **`Time Tracking`**: Log time on tasks (e.g., 2 hours on a bug).
+
+5. **`Roadmaps`**: Plan timelines (e.g., next quarter’s features).
+
+6. **`GitLab Pages`**: Host static sites (e.g., documentation).
+
+7. **`Web IDE`**: Edit code in-browser (e.g., fix a typo).
+
+8. **` Code Review Tools`**: Comment on MRs (e.g., suggest changes).
+
+9. **`GitLab Duo`**: AI tools for code (e.g., generate a test).
+

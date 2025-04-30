@@ -1885,6 +1885,43 @@ Creating a Group:
 
 * **`Public`**: Anyone, even without an account, can view it (e.g., for open-source work).
 
+### Subgroups
+A subgroup is a group nested within another group, allowing hierarchical organization of projects and permissions. Introduced in GitLab 9.0, subgroups support up to 20 levels of nesting and inherit permissions from their parent group unless overridden.
+
+#### How Subgroups Differ from Groups and Projects:
+
+##### Compared to a Group
+
+A group is a top-level or parent entity, while a subgroup is a child group within it, offering finer structure. For example, an “Engineering” group might have “Frontend” and “Backend” subgroups.
+##### Compared to a Project: 
+
+A project holds code and resources, while a subgroup is a container for multiple projects or subgroups, used for organization.
+
+#### Why Create Subgroups?
+
+1. Organize large projects into sub-components (e.g., “Design” and “Engineering” under “Product_Development”).
+
+2. Manage permissions for specific teams (e.g., a private “Security” subgroup).
+
+3. Separate internal/external work with different visibility levels.
+
+4. Improve navigation in large organizations.
+
+#### Creating a Subgroup:
+
+1. Go to the parent group’s overview page and click “New subgroup.”
+
+2. Name: Enter a unique name, e.g., “Frontend.”
+
+3. Description: Add a purpose, e.g., “Frontend development projects.”
+
+4. Visibility Level: Choose Private, Internal, or Public (must align with or be more restrictive than the parent group’s 
+visibility).
+
+5. Click “Create subgroup.”
+
+6. Permissions: Requires at least the Maintainer role on the parent group.
+
 
 ### Projects
 A project is a repository that holds code, issues, and resources. It belongs to a user or group.

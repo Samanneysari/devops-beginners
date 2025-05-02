@@ -2114,3 +2114,21 @@ Settings configures groups/projects.
 
 9. **`GitLab Duo`**: AI tools for code (e.g., generate a test).
 
+```
+git init
+```
+```
+git add .
+```
+```
+git commit -m "devops"
+```
+```
+git branch -M main
+```
+```
+git remote add origin http://
+```
+```
+git push -uf origin main
+```

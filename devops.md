@@ -1403,6 +1403,107 @@ This creates a custom network for our services. They can find each other by thei
 
 * Visit http://localhost:8080 to see Nginx’s default page. The MySQL database runs in the background with the password “example.”
 
+#### Restart Policies in Docker Compose
+When running services using Docker, container stability is a primary concern. Containers can stop for various reasons, such as an application error, a memory issue, or a full system reboot. A restart policy instructs the Docker daemon on how to behave when a container exits.
+
+This policy is defined directly within the docker-compose.yml file for each service, helping to ensure the reliability and high availability of your applications.
+
+Docker Compose supports four primary restart policies:
+
+1. **`no`**
+
+2. **`always`**
+
+3. **`on-failure`**
+
+4. **`unless-stopped`**
+
+##### 1.**`no (Default)`**
+This is the default policy. If a container stops, the Docker daemon will never attempt to restart it automatically.
+
+Usage:
+```
+services:
+  my-task:
+    image: my-image:latest
+    restart: "no"
+```
+
+Note: Since this is the default behavior, omitting the restart key for a service has the same effect.
+
+When to Use:
+
+**`One-off Tasks`**: Ideal for containers that perform a single, finite task and are expected to exit upon completion. Examples include running a database migration script, a data processing job, or a backup task.
+
+**`Development & Debugging`**: When you want full manual control over a container to inspect its logs and understand why it stopped.
+
+##### 2. **`always`**
+This policy instructs the Docker daemon to always restart the container if it stops, regardless of the exit code.
+
+Usage:
+```
+services:
+  web-server:
+    image: nginx:latest
+    restart: always
+```
+
+When to Use:
+
+Critical Services: Best for services that must be running at all times, such as web servers, API gateways, or message queues.
+
+Important Note: This policy will even restart a container that you manually stopped with docker stop if the Docker daemon itself is restarted (e.g., after a server reboot). Its goal is maximum availability, sometimes at the cost of manual control.
+
+##### 3. **`on-failure`**
+This policy restarts a container only if it exits with a non-zero exit code, which signifies an error. If the container stops gracefully with an exit code of 0 (indicating success), it will not be restarted.
+
+You can also specify a maximum number of restart attempts.
+
+Usage:
+```
+services:
+  worker:
+    image: my-worker-image
+    restart: on-failure:5 # Attempts to restart a maximum of 5 times
+```
+
+If you omit the retry count (e.g., restart: on-failure), the daemon will try to restart it indefinitely.
+
+When to Use:
+
+Worker Services: Excellent for background jobs or workers that might encounter transient errors (like a temporary loss of database connectivity). This gives them a chance to recover and restart.
+
+Computational Tasks: If a task might fail due to a recoverable error, this policy allows it to be retried automatically.
+
+##### 4. **`unless-stopped`**
+This policy is very similar to always. It will always restart a container if it stops, with one critical exception: it will not restart a container that was explicitly stopped by a user (via the docker stop command).
+
+Usage:
+```
+services:
+  database:
+    image: postgres:14
+    restart: unless-stopped
+```
+
+When to Use:
+
+Most Production Scenarios: This is generally the recommended policy for long-running services like databases, backends, and other core application components.
+
+It ensures that services come back online after a system reboot or an unexpected crash, but it also respects deliberate administrative actions. If you stop a container for maintenance, you can be confident it will stay down until you manually start it again.
+
+#### Key Difference: always vs. unless-stopped
+
+Understanding the distinction between these two is crucial for managing production environments effectively. The difference lies in how they handle a manually stopped container across a Docker daemon restart.
+
+Let's consider a scenario: You need to perform maintenance and manually stop a container using docker stop my-container.
+
+**`With restart: always:`**
+The container stops as requested. However, if the entire server reboots (and the Docker daemon restarts), the daemon will see that the container is supposed to be "always" running and will automatically start it again. This can be undesirable if your maintenance is not yet complete.
+
+**`With restart: unless-stopped:`**
+The container stops as requested. Now, if the server reboots, the Docker daemon remembers that the container's state was intentionally set to "stopped" by the user. As a result, it will not automatically start the container. It will remain stopped until you explicitly start it with docker start my-container
+
 #### Advanced Features of Docker Compose
 
 ##### Environment Variables
@@ -1948,6 +2049,125 @@ Upload your changes with git push.
 #### Pull: 
 Download updates with git pull.
 
+#### git revert: The Safe Way to Undo
+git revert is a safe, forward-moving command used to undo the changes introduced by a specific commit. It doesn't delete or alter the original commit; instead, it creates a brand new commit that applies the inverse changes.
+
+##### How It Works
+
+When you revert a commit, Git examines the changes in that commit and creates a new commit that does the exact opposite. If the original commit added a line of code, the revert commit will remove that line. The original "bad" commit remains in the project history, and a new "revert" commit is added after it.
+
+##### Key Characteristics
+
+Doesn't Rewrite History: This is its main advantage. Because it creates a new commit, it's a non-destructive action and is safe to use on public, shared branches (like main or develop).
+
+Preserves History: It maintains a clear and transparent record of the project, showing that a change was made and then later undone.
+
+Requires a New Commit: You will be prompted for a commit message for the revert commit.
+
+##### When to Use It
+
+Use git revert when you need to undo a commit that has already been pushed to a shared repository.
+
+Example
+Imagine you want to undo the changes from a commit with the hash a8e5fdf:
+
+This will create a new commit that undoes the changes from a8e5fdf
+```
+git revert a8e5fdf
+```
+* Git will open your editor to confirm the commit message for the new revert commit.
+
+* After saving, the new commit will be added to your branch.
+
+#### git reset: Moving and Discarding Commits (Local Use Only)
+git reset is a powerful and versatile command for undoing changes. Unlike revert, it rewrites commit history by moving the current branch's HEAD pointer to a different commit, effectively discarding any commits that came after it.
+
+The Golden Rule: Never use git reset on commits that have been pushed to a public/shared branch. Only use it to clean up your local commit history.
+
+git reset operates on three "trees" in Git: the Commit History, the Staging Area (Index), and the Working Directory. The command has three primary modes that affect these trees differently.
+
+##### **`git reset --soft`**
+This is the most gentle mode. It moves the HEAD pointer to the specified commit but does not touch the Staging Area or the Working Directory.
+
+Effect: The commits are gone from the history, but all the changes from those commits are now in your Staging Area, ready to be committed again.
+Use Case: Squashing multiple local commits into a single, clean commit.
+Example: To combine the last 3 commits into one:
+Bash
+
+Resets the branch pointer back 3 commits, but leaves all changes staged
+```
+git reset --soft HEAD~3
+```
+Now, all changes are staged. You can create a single new commit.
+```
+git commit -m "This is the new, combined commit message"
+```
+##### **`git reset --mixed (Default Mode)`**
+
+This mode moves the HEAD pointer and also resets the Staging Area. It does not touch the Working Directory.
+
+Effect: The commits are gone, and the changes are no longer staged. However, the modifications are still present in your local files (your Working Directory).
+
+Use Case: To un-commit and un-stage changes. You decided you want to rework the changes before committing them again.
+
+Example: To undo your last commit but keep the changes:
+```
+git reset --mixed HEAD~1
+```
+
+##### **`git reset --hard`**
+This is the most powerful and destructive mode. It moves the HEAD pointer and resets both the Staging Area and the Working Directory to match the specified commit.
+
+Effect: The commits are gone, and all changes in those commits are permanently deleted from your files. Any uncommitted work is lost.
+Use Case: To completely throw away the last few commits and all the work associated with them.
+Example: To permanently delete the last two commits and all their changes:
+Bash
+
+WARNING: This action cannot be easily undone.
+```
+git reset --hard HEAD~2
+```
+
+#### **`git rebase: Creating a Cleaner, Linear History`** 🧹
+git rebase is another command that rewrites history. Its primary purpose is to integrate changes from one branch onto another by moving a sequence of commits to a new base commit. The result is a perfectly linear history, free of merge commits.
+
+##### How It Works
+Instead of creating a merge commit, git rebase "re-plays" the commits from your feature branch on top of the target branch (e.g., main). It goes to the common ancestor, saves the changes you made in your branch as temporary patches, moves your branch to the tip of the target branch, and then applies the patches one by one, creating new commits with new hashes.
+
+##### Key Characteristics
+
+Rewrites History: Because it creates new commits, it's a destructive operation.
+
+Creates a Linear History: It avoids the "Merge branch 'main'" commits, making the project history much easier to read and understand.
+
+Can Cause Conflicts: You may have to resolve conflicts for each commit that is being re-played.
+
+##### The Golden Rule of Rebasing
+
+Just like git reset, NEVER rebase a branch that has been shared with others. If other developers have based their work on your original commits, your rebased branch will cause massive confusion and conflicts for them.
+
+##### When to Use It
+Use git rebase to update your local feature branch with the latest changes from the main branch before you merge it. This ensures a clean "fast-forward" merge.
+
+Example
+You are on your feature branch and want to incorporate the latest updates from the main branch.
+```
+#witch to main and pull the latest changes
+git switch main
+git pull origin main
+#Switch back to your feature branch
+git switch feature
+
+#Rebase your feature branch commits on top of the latest main
+git rebase main
+#Your entire feature branch is now moved to the tip of main, and its history is linear.
+```
+
+| Command     | Purpose                                    | Effect on History                                   | Primary Use Case                                                   |
+|-------------|--------------------------------------------|-----------------------------------------------------|---------------------------------------------------------------------|
+| `git revert` | Safely undo a commit                       | Creates a new commit. Does not rewrite history.     | Undoing a commit on a public/shared branch.                        |
+| `git reset`  | Move the branch pointer, discarding commits | Rewrites history. Can delete commits and changes.   | Cleaning up your local commit history before sharing.              |
+| `git rebase` | Move a sequence of commits to a new base   | Rewrites history. Creates new commits to make history linear. | Integrating upstream changes into your local feature branch. |
 
 ## What is GitLab?
 

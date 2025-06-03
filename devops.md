@@ -753,6 +753,139 @@ Running docker run myimage Goodbye outputs
 
 * Use **`both`** for a fixed command with default, changeable arguments.
 
+#### Dockerfile Best Practices
+
+##### 1. Choose the Right Base Image
+
+Selecting an appropriate base image is foundational to a good Dockerfile. Official Docker images, such as those found on Docker Hub, are curated, tested by millions, and regularly updated, making them a reliable starting point. Minimal images like Alpine (under 6 MB) reduce image size, improve portability, and minimize vulnerabilities compared to larger images like Ubuntu. However, consider potential trade-offs, such as Alpine’s performance limitations for certain applications, as noted in Python Speed. Always verify the source of custom images and prefer Verified Publisher or Docker-Sponsored Open Source images for trustworthiness.
+```
+FROM alpine:3.21@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c
+```
+##### 2. Use Multi-Stage Builds
+
+Multi-stage builds allow you to separate the build environment (e.g., compiling code) from the runtime environment, resulting in smaller, more secure images. By using multiple FROM statements, you can copy only the necessary artifacts to the final image, excluding build tools or temporary files. This approach is particularly effective for languages like Go or Java, where build dependencies are significant.
+
+```
+FROM golang:1.20 AS builder
+WORKDIR /app
+COPY . .
+RUN go build -o myapp
+
+FROM alpine:latest
+COPY --from=builder /app/myapp /usr/local/bin/myapp
+CMD ["myapp"]
+
+```
+##### 3. Leverage .dockerignore Files
+
+A .dockerignore file excludes unnecessary files from the build context, reducing build time and image size. Common exclusions include documentation files (e.g., *.md), logs, or dependency directories like node_modules. This practice also prevents sensitive files from being accidentally included.
+```
+# .dockerignore
+*.md
+*.log
+node_modules
+```
+##### 4. Minimize Image Layers
+
+Docker creates a new layer for each instruction, with a maximum of 127 layers. To reduce layers, combine commands in a single RUN instruction using && and clean up temporary files in the same command to avoid bloating the image.
+```
+RUN apt-get update && apt-get install -y curl git && rm -rf /var/lib/apt/lists/*
+```
+##### 5. Run as Non-Root User
+
+Running containers as root increases the risk of privilege escalation. Create a non-root user with a high UID/GID (e.g., above 10,000) to enhance security. Ensure the user has appropriate permissions for application files and avoid using privileged ports like 80.
+```
+RUN groupadd -g 10001 appuser && useradd -u 10000 -g appuser appuser
+USER appuser:appuser
+```
+
+##### 6. Avoid Unnecessary Packages
+
+Installing only essential packages reduces image size, build time, and vulnerabilities. Use flags like --no-install-recommends for apt-get to avoid unnecessary dependencies.
+```
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+```
+##### 7. Prefer COPY Over ADD
+
+COPY is more predictable and secure than ADD, which can extract tar files or download from URLs, potentially introducing vulnerabilities. Use ADD only for specific cases like tar auto-extraction.
+```
+COPY . /app
+```
+
+##### 8. Leverage Build Cache
+
+Docker’s build cache reuses layers from previous builds, speeding up the process. Place commands that change infrequently (e.g., installing dependencies) before those that change often (e.g., copying application code) to maximize cache reuse.
+```
+FROM python:3.9
+RUN pip install -r requirements.txt
+COPY . /app
+```
+
+##### 9. Pin Base Image Versions
+
+Pinning base images to specific versions or digests ensures reproducibility and prevents unexpected changes. Tools like Docker Scout can help monitor updates.
+```
+FROM python:3.9.1@sha256:example-digest
+```
+
+##### 10.  Use Environment Variables
+
+Environment variables allow flexible configuration without modifying the Dockerfile. Avoid hardcoding sensitive data like API keys; instead, pass them at runtime or use build arguments.
+```
+ENV APP_PORT=8080
+```
+
+##### 11.  Combine ENTRYPOINT and CMD
+
+Use ENTRYPOINT for the main executable and CMD for default arguments, allowing users to override arguments easily.
+```
+ENTRYPOINT ["python", "app.py"]
+CMD ["--port", "8080"]
+```
+
+##### 12.  Keep Images Minimal and Focused
+
+Each container should serve a single purpose, following the “one concern per container” principle. This improves scalability and reduces complexity. Use minimal images like gcr.io/distroless for languages like Python or Go to further reduce size and attack surface.
+
+##### 13.  Use Build Arguments
+
+Build arguments (ARG) allow dynamic configuration during the build process, making Dockerfiles more flexible.
+```
+ARG PYTHON_VERSION=3.9
+FROM python:${PYTHON_VERSION}
+```
+
+##### 14.  Expose Only Necessary Ports
+
+Expose only the ports required by your application to minimize the attack surface. The EXPOSE instruction is informational and should align with runtime publishing.
+```
+EXPOSE 8080
+```
+
+##### 15.  Lint and Scan Dockerfiles
+
+Use tools like hadolint to lint Dockerfiles for common issues, such as running as root or using ADD inappropriately. Scan images in CI/CD pipelines with tools like Sysdig’s inline scanner to detect vulnerabilities early.
+
+##### 16.  Regularly Update Base Images
+
+Outdated base images can introduce vulnerabilities. Rebuild images periodically and use stable or LTS versions to balance updates with stability.
+
+##### 17.  Avoid Hardcoding Sensitive Data
+
+Never include secrets like API keys in Dockerfiles. Use environment variables, secrets management tools, or runtime injection to handle sensitive data securely.
+
+##### 18.  Order Commands for Cache Optimization
+
+Place RUN commands for installing dependencies before COPY or ADD commands to leverage caching, as application code is likely to change more frequently.
+
+##### 19.  Use Distroless or Scratch Images
+
+Distroless images (e.g., gcr.io/distroless/python) or FROM scratch provide minimal environments with fewer dependencies, reducing vulnerabilities and image size.
+
+##### 20.  Secure the Docker Socket
+
+Avoid mounting /var/run/docker.sock unless necessary, as it can allow unauthorized access to the host. Secure TCP connections if Docker is exposed remotely.
+
 ### Docker network 
 Docker networking is how containers—those isolated environments running your applications—talk to each other and the outside world. Think of containers as little boxes: networking is the phone line connecting them or letting them call out.
 
@@ -2132,3 +2265,256 @@ git remote add origin http://
 ```
 git push -uf origin main
 ```
+
+
+#### Explain every detail of CICD pipeline
+
+```
+stages:
+  - build
+  - pre-security
+  - deploy
+  - build-develop
+  - deploy-develop
+variables:
+  NEXUS_REGISTRY: localhost:8083
+  IMAGE_NAME: simple-app
+
+build: 
+  stage: build
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD $NEXUS_REGISTRY
+    - docker build -t $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME .
+    - docker push $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+  tags:
+    - sami-runner 
+
+security:
+   stage: pre-security
+   rules:
+     - if: $CI_COMMIT_TAG
+   script:
+     - trivy image --exit-code 0 --severity CRITICAL  $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME   
+   tags:
+     - sami-runner      
+ 
+deploy-for-product:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual  
+  script:
+    - EXISTING=$(docker ps -qa -f name=app1) && [ -n "$EXISTING" ] && docker stop "$EXISTING" && docker rm "$EXISTING"
+    - docker run -d --name app1 -p 5000:5000  $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+  tags:
+    - sami-runner
+
+build-for-develop:
+  stage:  build-develop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "DEV"
+  script:
+    - docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD $NEXUS_REGISTRY
+    - docker build -t $NEXUS_REGISTRY/$IMAGE_NAME:dev
+    - docker push   $NEXUS_REGISTRY/$IMAGE_NAME:dev
+  tags:
+    - sami-runner  
+
+deploy-for-develop:
+  stage: deploy-develop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "DEV"
+  script:
+    -  EEXISTING=$(docker ps -qa -f name=app1) && [ -n "$EXISTING" ] && docker stop "$EXISTING" && docker rm "$EXISTING"
+    -  docker run --name app-dev -p 5001:5000 $NEXUS_REGISTRY/$IMAGE_NAME:dev
+  tags:
+    - sami-runner  
+
+```
+##### 1. stages
+This section defines the sequence of stages in the pipeline. Jobs assigned to the same stage can run in parallel, but stages themselves run in the order they are listed.
+```
+stages:
+  - build
+  - pre-security
+  - deploy
+  - build-develop
+  - deploy-develop
+
+```
+
+**`build`**: Compiles and packages the application into a Docker image for production.
+
+**`pre-security`**: Runs security scans on the production Docker image before deployment.
+
+**`deploy`**: Deploys the production image to the server.
+
+**`build-develop`**: Builds a Docker image for the development environment.
+
+**`deploy-develop`**: Deploys the development image to the server.
+
+##### 2. variables
+
+This section declares global variables that are used across multiple jobs in the pipeline.
+```
+variables:
+  NEXUS_REGISTRY: localhost:8083
+  IMAGE_NAME: simple-app
+```
+
+**`NEXUS_REGISTRY`**: localhost:8083: Defines the URL of the Nexus Docker registry where images will be stored and pulled from.
+
+**`IMAGE_NAME`**: simple-app: Specifies the base name for the Docker image being built.
+
+##### 3. Production Workflow (Triggered by Git Tags)
+
+This workflow is initiated whenever a new Git tag is pushed to the repository. It is intended for creating and deploying a production release.
+
+Job: build
+This job builds the production Docker image and pushes it to the Nexus registry.
+```
+build: 
+  stage: build
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD $NEXUS_REGISTRY
+    - docker build -t $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME .
+    - docker push $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+  tags:
+    - sami-runner
+```
+
+**`stage`**: build: Assigns this job to the build stage.
+
+**`rules: - if: $CI_COMMIT_TAG`**: This rule ensures the job only runs when the pipeline is triggered by a Git tag. $CI_COMMIT_TAG is a predefined GitLab CI/CD variable that contains the tag name.
+
+**`script`**: A sequence of shell commands executed by the GitLab Runner.
+* **`docker login ...`**: Logs into the specified Nexus registry using credentials stored in predefined GitLab CI/CD variables ($NEXUS_USERNAME, $NEXUS_PASSWORD). These should be configured in your project's CI/CD settings.
+
+* **`docker build ...`**: Builds a new Docker image.
+
+* **`-t $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME`**: Tags the image. The tag is composed of the registry URL, the image name, and the Git tag that triggered the pipeline (e.g., v1.0.0). The . at the end specifies that the Docker build context is the current directory.
+
+* **`docker push ...`**: Pushes the newly built and tagged image to the Nexus registry.
+* **`tags`**: - sami-runner: Specifies that this job must be executed by a GitLab Runner that has the sami-runner tag.
+
+##### 4. security
+This job performs a vulnerability scan on the production image.
+```
+security:
+   stage: pre-security
+   rules:
+     - if: $CI_COMMIT_TAG
+   script:
+     - trivy image --exit-code 0 --severity CRITICAL  $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME   
+   tags:
+     - sami-runner
+```
+
+**`stage`**: pre-security: Assigns this job to the pre-security stage, which runs after build.
+
+**`rules`**: - if: $CI_COMMIT_TAG: Same rule as the build job, runs only for Git tags.
+
+**`trivy image ...`**: Uses the Trivy security scanner to check the image for vulnerabilities.
+
+**`--exit-code 0`**: Ensures the pipeline job will succeed even if vulnerabilities are found. This is useful for auditing without blocking the pipeline. To enforce security, you could set it to 1 to fail the job on detected issues.
+
+**`--severity CRITICAL`**: Filters the scan to only report vulnerabilities of CRITICAL severity.
+
+**`tags`**: - sami-runner: Uses a runner tagged sami-runner.
+
+##### 5. deploy-for-product
+This job deploys the production image as a running container. It requires manual approval.
+```
+deploy-for-product:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual  
+  script:
+    - EXISTING=$(docker ps -qa -f name=app1) && [ -n "$EXISTING" ] && docker stop "$EXISTING" && docker rm "$EXISTING"
+    - docker run -d --name app1 -p 5000:5000  $NEXUS_REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+  tags:
+    - sami-runner
+```
+
+**`stage`**: deploy: Assigns this job to the deploy stage.
+
+**`rules`**: - if: $CI_COMMIT_TAG: Runs only for Git tags.
+
+**`when: manual`**: This is a critical keyword. It pauses the pipeline and requires a user to manually trigger this job from the GitLab UI. This is a safety measure to prevent accidental deployments to production.
+
+**`EXISTING=$(...)`**: This line checks if a container named app1 is already running. If it exists ([ -n "$EXISTING" ]), the script stops (docker stop) and removes (docker rm) it to ensure a clean deployment.
+
+**`docker run ...`**: Starts a new container.
+
+**`-d`**: Runs the container in detached mode (in the background).
+
+**`--name app1`**: Assigns the name app1 to the container.
+
+**`-p 5000:5000`**: Maps port 5000 on the host machine to port 5000 inside the container.
+
+**`tags`**: - sami-runner: Uses a runner tagged sami-runner.
+
+##### 6. build-for-develop
+
+This job builds the development Docker image.
+```
+build-for-develop:
+  stage:  build-develop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "DEV"
+  script:
+    - docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD $NEXUS_REGISTRY
+    - docker build -t $NEXUS_REGISTRY/$IMAGE_NAME:dev .
+    - docker push $NEXUS_REGISTRY/$IMAGE_NAME:dev
+  tags:
+    - sami-runner
+```
+
+**`stage`**: build-develop: Assigns this job to the build-develop stage.
+
+**`rules: - if`**: ...: This rule ensures the job runs only when a push event occurs on the DEV branch.
+
+**`$CI_PIPELINE_SOURCE`** == "push": Checks if the trigger was a git push.
+
+**`$CI_COMMIT_BRANCH`** == "DEV": Checks if the push was to the DEV branch.
+
+**`docker login ...`**: Logs into the Nexus registry.
+
+**`docker build ...`**: Builds a Docker image and tags it with a static tag: dev. Correction: Added . at the end to specify the build context.
+
+**`docker push ...`**: Pushes the dev image to the Nexus registry. Correction: The image name and tag were added to this command.
+
+**`tags`**: - sami-runner: Uses a runner tagged sami-runner.
+
+##### 7. deploy-for-develop (Corrected Version)
+This job deploys the development image.
+```
+deploy-for-develop:
+  stage: deploy-develop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "DEV"
+  script:
+    -  EXISTING=$(docker ps -qa -f name=app-dev) && [ -n "$EXISTING" ] && docker stop "$EXISTING" && docker rm "$EXISTING"
+    -  docker run -d --name app-dev -p 5001:5000 $NEXUS_REGISTRY/$IMAGE_NAME:dev
+  tags:
+    - sami-runner
+```
+
+**`stage`**: deploy-develop: Assigns this job to the deploy-develop stage.
+
+**`rules: - if: ...`**: Same rule as build-for-develop, runs on pushes to the DEV branch.
+
+**`EXISTING=$(...)`**: Checks for, stops, and removes any pre-existing container named app-dev. Correction: Fixed a typo (EEXISTING to EXISTING) and changed the filter name=app1 to name=app-dev to match the container being deployed in this job.
+
+**`docker run ...`**: Starts the development container.
+
+**`--name app-dev`**: Names the container app-dev.
+
+**`-p 5001:5000`**: Maps port 5001 on the host to port 5000 in the container, preventing a port conflict with the production container (app1).
+
+**`tags`**: - sami-runner: Uses a runner tagged sami-runner.

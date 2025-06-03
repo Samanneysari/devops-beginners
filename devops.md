@@ -267,6 +267,35 @@ An HTTP redirect is a way for a server to tell a client (such as a web browser) 
 | **301 (Moved Permanently)** | Permanent Redirect | The resource has permanently moved to a new URL. Browsers may change `POST` to `GET`. | **Yes** (May change `POST → GET`) |
 | **308 (Permanent Redirect)** | Permanent Redirect | The resource has permanently moved, and the HTTP method must be preserved. | **No** (Preserves original method) |
 
+## Infrastructure as Code (IaC)
+
+Infrastructure as Code (IaC) is the practice of managing and provisioning infrastructure (like servers, networks, load balancers, and databases) through machine-readable definition files, rather than through manual configuration or interactive tools.
+
+**`Terraform`**: A leading IaC tool used for provisioning infrastructure. It is declarative, meaning you define the desired end state of your infrastructure, and Terraform figures out how to get there. It is cloud-agnostic, working with AWS, Azure, GCP, and more.
+
+**`Ansible`**: A tool often used for configuration management. It is procedural, meaning you define the steps to take to configure a server to a desired state. It is excellent for installing software, updating configurations, and managing existing servers.
+
+## Monitoring and Logging
+
+Monitoring: The process of collecting and analyzing quantitative data (metrics) about a system's performance. It helps you understand the health of your system in real-time.
+
+**`Prometheus`**: A popular open-source tool for collecting time-series metrics.
+
+**`Grafana`**: A tool for creating dashboards to visualize the metrics collected by Prometheus.
+
+**`Logging`**: The process of recording discrete events that happen in your application or system. Logs are essential for debugging and understanding what went wrong after an error occurs.
+
+## Cloud-Native Concepts & Kubernetes
+Cloud-native is an approach to building and running applications that fully leverages the advantages of the cloud computing model. Key principles include containers, microservices, dynamic orchestration, and automation.
+
+**`Kubernetes (K8s)`** is the industry-standard open-source platform for container orchestration. While Docker Swarm is excellent for simpler applications, Kubernetes is designed to manage complex, large-scale, and highly available containerized applications across clusters of machines. It handles service discovery, load balancing, self-healing, and automated rollouts and rollbacks.
+
+## Backup and Disaster Recovery (DR)
+
+**`Backup`**: The process of creating a copy of your data so it can be restored in case of data loss. For stateful applications like databases, regular, automated backups are non-negotiable. This applies to data stored in Docker persistent volumes as well.
+
+**`Disaster Recovery (DR)`**: This is the high-level plan and process for how to use your backups to quickly recover your application and business operations after a catastrophic failure (like a server crash or a data center outage). A good DR plan is tested regularly to ensure it works when needed.
+
 ## Docker
 ### What is Docker?
 Docker is a tool that makes it super easy to create, run, and share applications by packaging them into small, portable units called containers. Think of Docker as a way to put your application (like a website, a game, or a program) and everything it needs—like code, libraries, settings, and tools—into a single "box" that can run anywhere, whether it’s your laptop, a server, or the cloud. It’s like a shipping container for software: standardized, lightweight, and ready to go!
@@ -2049,6 +2078,20 @@ Upload your changes with git push.
 #### Pull: 
 Download updates with git pull.
 
+#### The Staging Area (or Index)
+The Staging Area (also called the "Index") is a core concept in Git. It's an intermediate step between your Working Directory (your local files) and your Commit History (the .git repository).
+
+Think of it like a prep table in a kitchen. You gather and prepare all your ingredients (your code changes) on the table before you put them in the oven (commit them). This allows you to carefully craft your commit, including only the specific changes you want, rather than committing everything you've worked on at once.
+
+The basic workflow is:
+
+* Working Directory: You modify files.
+
+* **`git add <file>`**: You move specific changes from your Working Directory to the Staging Area.
+
+* **`git commit`**: Git takes the files in the Staging Area and permanently stores them as a snapshot in your Commit History.
+
+
 #### git revert: The Safe Way to Undo
 git revert is a safe, forward-moving command used to undo the changes introduced by a specific commit. It doesn't delete or alter the original commit; instead, it creates a brand new commit that applies the inverse changes.
 
@@ -2168,6 +2211,76 @@ git rebase main
 | `git revert` | Safely undo a commit                       | Creates a new commit. Does not rewrite history.     | Undoing a commit on a public/shared branch.                        |
 | `git reset`  | Move the branch pointer, discarding commits | Rewrites history. Can delete commits and changes.   | Cleaning up your local commit history before sharing.              |
 | `git rebase` | Move a sequence of commits to a new base   | Rewrites history. Creates new commits to make history linear. | Integrating upstream changes into your local feature branch. |
+
+### .gitignore
+
+A .gitignore file is a text file that tells Git which files or directories to intentionally ignore. Ignored files will not be tracked, meaning they won't be staged or committed. This is essential for keeping your repository clean and avoiding accidental check-ins of unwanted files.
+
+#### Common files to ignore:
+
+* **`Dependencies`** (node_modules/, vendor/)
+
+* **`Compiled code`** (build/, dist/, *.class)
+
+* **`Logs and temporary files`** (*.log, tmp/)
+
+* **`System files`** (.DS_Store, Thumbs.db)
+
+* **`Local environment and secret files`** (.env, secrets.yml)
+
+### Resolving Merge Conflicts
+
+A merge conflict occurs when Git cannot automatically resolve differences in code between two branches. This usually happens when two developers have edited the same lines in the same file.
+
+When a conflict happens, Git will pause the merge and mark the conflicting sections in the file with markers: <<<<<<<, =======, and >>>>>>>.
+
+#### How to resolve a conflict:
+
+* Run git status to see which files have conflicts.
+
+* Open the conflicted file(s) in your editor.
+
+* Manually edit the file to remove the markers and decide which code to keep (it could be your version, the other version, or a combination of both).
+
+* Once you've fixed the file, save it and use git add <file> to mark the conflict as resolved.
+
+* When all conflicts are resolved and staged, run git commit to finalize the merge.
+
+### Remote-Tracking Branches (e.g., origin/main)
+
+A remote-tracking branch is a local, read-only reference to the state of a branch on a remote repository. For example, origin/main is your local copy of the main branch from the origin remote.
+
+These branches are updated when you run git fetch. They are useful because they allow you to see the progress of the remote repository without having to immediately merge those changes into your local branches. You can compare your local branch to the remote-tracking branch (git diff main origin/main) to see what has changed.
+
+### Git Hooks
+Git hooks are scripts that run automatically at certain points in the Git lifecycle, such as before a commit, after a push, or before a merge. They are a powerful way to automate tasks and enforce team standards.
+
+A common hook is pre-commit. This hook runs before a commit message is even typed. It's often used to:
+
+* Run a code linter to check for style issues.
+
+* Run a code formatter (like Prettier or Black).
+
+* Check for debug statements or secrets that shouldn't be committed. If the pre-commit script exits with an error, the commit is aborted.
+
+### Git Tagging for Releases
+
+As seen in your CI/CD pipeline, Git tags are crucial for marking release points. A tag is a pointer to a specific commit, used to capture a point in history as being important.
+
+* **`Lightweight Tags`**: A simple pointer to a commit.
+
+* **`Annotated Tags`**: A full object in the Git database that includes the tagger's name, email, date, and a tagging message. Annotated tags are recommended for releases.
+
+Example commands:
+
+```
+# Create an annotated tag for version 1.0.0
+git tag -a v1.0.0 -m "Release version 1.0.0"
+
+# Tags are not pushed by default. You must push them explicitly.
+# This pushes all of your local tags to the remote repository.
+git push --tags
+```
 
 ## What is GitLab?
 
@@ -2738,3 +2851,78 @@ deploy-for-develop:
 **`-p 5001:5000`**: Maps port 5001 on the host to port 5000 in the container, preventing a port conflict with the production container (app1).
 
 **`tags`**: - sami-runner: Uses a runner tagged sami-runner.
+
+### GitLab & CI/CD Documentation Additions
+
+#### 1. Job Artifacts
+
+In GitLab CI/CD, artifacts are files and directories that are generated by a job. After the job finishes, GitLab saves these artifacts and makes them available for download in the UI. More importantly, they can be passed to jobs in later stages of the same pipeline.
+
+##### Artifact Use Case:
+
+* A build job compiles your application and creates a binary file.
+
+* You save this binary as an artifact.
+
+* A deploy job in a later stage can download this artifact and deploy it to a server, ensuring you are deploying the exact same file that was built and tested.
+
+Example in .gitlab-ci.yml:
+```
+build-job:
+  stage: build
+  script:
+    - ./build_script.sh # This script creates a binary in the ./bin directory
+  artifacts:
+    paths:
+      - bin/my-app # This path is saved as an artifact
+    expire_in: 1 week
+```
+
+#### 2. Runner Security
+GitLab Runners execute the code in your pipeline, so their security is critical.
+
+* **`Principle of Least Privilege`**: A runner should only have the permissions it absolutely needs to do its job.
+
+* **`Avoid Privileged Mode`**: When using Docker executors, avoid running containers in privileged mode unless it is strictly necessary (e.g., for building Docker images with Docker-in-Docker). Privileged mode gives the container full root access to the host machine, which is a major security risk.
+
+* **`Dedicated Runners`**: For sensitive projects, use dedicated runners that are not shared with other projects to prevent potential data leakage.
+
+#### 3. Environment Variables & Secrets Management
+Never hardcode credentials, tokens, or other secrets directly in your .gitlab-ci.yml file. GitLab has a secure place to store these:
+
+Project > Settings > CI/CD > Variables
+
+Here, you can define variables that are securely passed to the runner at runtime.
+
+* Protected: A protected variable is only passed to pipelines running on protected branches (like main).
+
+* Masked: A masked variable's value will be hidden in job logs to prevent accidental exposure.
+
+#### 4. Pipeline Visualization
+GitLab provides a real-time, visual representation of your entire pipeline. This pipeline graph shows all your stages and the jobs within them. You can easily see which jobs are running, which have passed, and which have failed. Clicking on a failed job will take you directly to its log, making it an essential tool for quickly diagnosing and debugging pipeline issues.
+
+#### 5. Merge Request Pipelines
+A Merge Request (MR) Pipeline is a pipeline that runs automatically whenever a new MR is created or an existing MR is updated with new commits. This is a powerful feature that acts as a quality gate.
+
+You can configure it to run tests, linters, and security scans on the proposed changes. This ensures that code meets quality standards before it is merged into a key branch like main or develop, preventing broken code from entering the main codebase.
+
+#### 6. Caching Dependencies
+Many projects rely on dependencies that need to be downloaded (e.g., from npm, Maven, or PyPI). Downloading these on every pipeline run is slow and inefficient. GitLab's cache keyword allows you to save these dependencies between pipeline runs.
+
+The first time a job runs, it downloads the dependencies and saves them in a cache. Subsequent runs of the same job will find the cache and restore the files, dramatically speeding up the pipeline.
+
+Example for a Node.js project:
+```
+build-node-app:
+  stage: build
+  image: node:18
+  cache:
+    key:
+      files:
+        - package-lock.json # The cache is invalidated only if this file changes
+    paths:
+      - node_modules/
+  script:
+    - npm install
+    - npm run build
+```

@@ -3175,3 +3175,458 @@ ansible-playbook -i hosts.yml install_nginx.yml
 **`hosts.yml`**: This is the value for the -i flag. You are providing the path to your inventory file.
 
 **`install_nginx.yml`**: This is the final argument to the command. It is the path to the playbook file that you want to execute
+
+### Some Practices
+
+#### Practice 1: Add an Alias to a User's .bashrc File
+Question: How can you add a permanent alias (like mk for mkdir) to a specific user's .bashrc file?
+
+```
+- name: Add alias
+  hosts: devops-test
+  tasks:
+    - name: Add mk alias
+      lineinfile:
+        path: /home/saman/.bashrc
+        line: alias mk='mkdir'
+```
+
+#### Practice 2: Install Multiple Packages Using a Loop
+Question: How can you install a list of packages (like curl, btop, git, apache2) using a loop within a single task?
+```
+- name: Install packages
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: Install curl and btop
+      apt:
+        name: "{{ item }}"
+      loop:
+        - curl
+        - btop
+        - git
+        - apache2
+```
+
+#### Practice 3: Create a New User
+Question: How can you ensure that a new user named devops exists on the system?
+```
+- name: create user
+  hosts: devops-test
+  become: yes
+  tasks:
+    - name: add user
+      user:
+        name: devops
+        state: present
+```
+
+#### Practice 4: Create a Cron Job to Run a Script
+Question: How can you create a cron job that runs a script named cron.sh every two hours, after first copying the script to the remote host?
+
+```
+- name: Create cron job
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: Create a job
+      cron:
+        name: "My test job"
+        job: "./cron.sh"
+        hour: "*/2****"
+    - name: touch file 
+      copy:
+        src: "./cron.sh"
+        dest: "/home/saman/"
+```
+
+#### Practice 5: Install and Then Remove a Package
+Question: How can you ensure the git package is installed and then subsequently remove it within the same playbook?
+```
+- name: Install and remove git
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: Install git
+      apt:
+        name: git
+        state: present
+
+    - name: Remove git
+      apt:
+        name: git
+        state: absent
+```
+
+#### Practice 6: Change the System's Hostname
+Question: How can you change the system's hostname to devops-sami?
+```
+- name: hostname
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: set hostname
+      hostname:
+        name: devops-sami
+```
+
+#### Practice 7: Add an Entry to the /etc/hosts File
+Question: How can you add a new line to the /etc/hosts file using the shell module?
+```
+- name: Add to hosts file
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: Add devops.com
+      shell: |
+        sed -i "6i 192.168.114.216 devops222.com" /etc/hosts
+```
+
+#### Practice 8: Display a Gathered Fact (IP Address)
+Question: How can you display a gathered fact, such as the host's IPv6 addresses, using the debug module?
+```
+- name: Get IP
+  hosts: devops-test
+  tasks:
+    - name: Show IP address
+      debug:
+        msg: "{{ ansible_all_ipv6_addresses }}"
+```
+
+#### Practice 9: Create a New Directory
+Question: How can you create a new directory at the path /opt/home/devops-happy?
+```
+- name: Create directory
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: Create the directory
+      file:
+        path: /opt/home/devops-happy
+        state: directory
+```
+
+#### Practice 10: Change File Permissions
+Question: How can you change the permissions of a file named hello.txt to 644?
+```
+- name: permission
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: change
+      file:
+        path: "/home/saman/hello.txt"
+        mode: 644
+```
+
+#### Practice 11: Manage the Firewall (UFW) and Deny a Port
+Question: How can you use the ufw module to create a rule to deny traffic on port 8080?
+```
+- name: Manage firewall
+  hosts: devops-test
+  become: TRUE
+  tasks:
+    - name: Deny port 80
+      ufw:
+        rule: deny
+        port: '8080'
+```
+
+#### Practice 12: Change the Root User's Password
+Question: How can you update the root user's password?
+```
+- name: Change root password
+  hosts: devops-test
+  become: true
+  tasks:
+    - name: Update root password
+      user:
+        name: root
+        password: 1234
+```
+
+Security Note: Storing passwords in plaintext within a playbook is a major security risk. In real-world scenarios, always use Ansible Vault to encrypt sensitive data.
+
+#### Practice 13: Execute a Local Script on a Remote Host
+Question: How can you execute a local script (hello.sh) from the control node on the remote host?
+```
+- name: Execute script
+  hosts: devops-test
+  tasks:
+    - name: Run hello.sh
+      script: ./hello.sh
+```
+
+#### Practice 14: Read the Content of a Remote File
+Question: How can you read the content of a remote file (/etc/hostname), store it in a variable, and then display it?
+```
+- name: Read file
+  hosts: devops-test
+  tasks:
+    - name: Read /etc/hostname
+      slurp:
+        src: /etc/hostname
+      register: file_content
+
+    - name: Show content
+      debug:
+        msg: "{{ file_content['content'] | b64decode }}"
+```
+
+### Templating with Jinja2
+In Ansible, you don't just work with static files. You often need to create dynamic content, like configuration files that change based on which server you are targeting. This is where Jinja2 comes in.
+
+Jinja2 is a powerful templating engine for Python. Ansible uses it to allow you to insert variables, run loops, and apply conditional logic directly inside your files.
+
+#### Why Use Jinja2?
+Imagine you need to deploy a web application configuration file. The server_name might be prod.example.com in production but dev.example.com in development. Instead of maintaining two separate files, you can create one template and dynamically insert the correct server name based on a variable.
+
+#### Jinja2 Syntax
+Jinja2 has a few simple but powerful syntax elements you'll use constantly in Ansible:
+
+##### 1. Expressions: {{ ... }}
+An expression is used to print the value of a variable into the file. Anything inside the double curly braces will be replaced by the value of that variable when the playbook runs.
+
+Example Playbook:
+```
+- hosts: webservers
+  vars:
+    package_name: "nginx"
+  tasks:
+    - name: Install a package
+      ansible.builtin.apt:
+        name: "{{ package_name }}" # The value of package_name will be inserted here
+        state: present
+```
+
+##### 2. Statements: {% ... %}
+A statement is used for logic, such as if/else conditions or for loops. This logic is executed when the template is rendered, but it doesn't print anything directly into the final file (unless it contains expressions).
+
+Example Playbook:
+```
+- hosts: all
+  tasks:
+    - name: Show a custom message
+      ansible.builtin.debug:
+        msg: |
+          {% if ansible_hostname == "web1" %}
+            This is the primary web server.
+          {% else %}
+            This is a different server.
+          {% endif %}
+```
+
+### Using the template Module
+The most common way to use Jinja2 is with the template module. This module takes a template file (ending in .j2) from your control node, processes it with Jinja2, and copies the resulting file to the managed node.
+
+#### Step 1: Create a template file (nginx.conf.j2)
+
+This file looks like a normal Nginx config file, but with a variable for the number of worker processes.
+
+Code snippet
+```
+/path/to/templates/nginx.conf.j2
+
+user www-data;
+worker_processes {{ ansible_processor_vcpus }}; # This will be replaced by a fact
+pid /run/nginx.pid;
+
+events {
+  worker_connections 768;
+}
+
+# ... rest of the config
+```
+* {{ ansible_processor_vcpus }} is an Ansible "fact"—a piece of data Ansible automatically discovers about the server.
+
+#### Step 2: Use the template module in your playbook
+```
+- name: Deploy Nginx config from template
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Copy templated Nginx config file
+      ansible.builtin.template:
+        src: /path/to/templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+```
+
+When this runs, Ansible will read nginx.conf.j2, replace {{ ansible_processor_vcpus }} with the actual number of CPU cores on the target server, and save the final file as /etc/nginx/nginx.conf.
+
+### Ansible Facts
+Before a playbook runs any tasks on a host, it first performs a step called Gathering Facts.
+
+### Gathering Facts
+This is an automatic process where Ansible connects to a managed node and collects a huge amount of information (facts) about it. This includes details like:
+
+* Hardware information (CPU, memory, disk space)
+
+* Operating system and version
+
+* Network interfaces and IP addresses
+
+* Hostname
+
+All this information is stored in built-in variables that you can use in your playbooks, just like {{ ansible_hostname }} or {{ ansible_processor_vcpus }}. This allows you to write playbooks that adapt to different systems.
+
+### Local Facts
+Sometimes, the automatically gathered facts are not enough. You might have custom information about a server that you want Ansible to know, such as its role (e.g., "web_server_prod") or the data_center it belongs to.
+
+Local Facts allow you to define your own custom facts on a managed node.
+
+#### How it works:
+
+On the managed node (your server), create the directory /etc/ansible/facts.d.
+
+Inside that directory, create a file ending in .fact. The file should be in INI or JSON format and contain your custom key-value data.
+
+Example server_info.fact file on a managed node:
+```
+[general]
+role=web_server_prod
+data_center=london
+```
+
+When Ansible runs and gathers facts, it will find this file and load its content into the ansible_local variable. You can then access it in your playbook like this:
+```
+- name: Display local facts
+  hosts: all
+  tasks:
+    - name: Show the server role
+      ansible.builtin.debug:
+        msg: "This server's role is {{ ansible_local.general.role }}."
+```
+
+### Working with Variables and Logic
+Variables and logic are what make playbooks truly dynamic and powerful.
+
+Defining Variables in a Playbook
+The simplest way to define a variable is directly within your playbook using the vars keyword. These variables can then be used anywhere in the play.
+```
+- name: Deploy Apache Web Server
+  hosts: webservers
+  become: true
+  vars:
+    apache_package: httpd
+    apache_service: httpd
+  tasks:
+    - name: Install Apache
+      ansible.builtin.yum:
+        name: "{{ apache_package }}"
+        state: present
+
+    - name: Start Apache service
+      ansible.builtin.service:
+        name: "{{ apache_service }}"
+        state: started
+```
+
+#### Registering Task Output as a Variable
+Sometimes, you need to use the output of one task as an input for another. The register keyword saves the entire output of a task (including whether it succeeded, failed, and its return values) into a new variable.
+```
+- name: Check if a file exists
+  hosts: all
+  tasks:
+    - name: Use 'stat' to check for file
+      ansible.builtin.stat:
+        path: /etc/motd
+      register: motd_file
+
+    - name: Show the registered variable
+      ansible.builtin.debug:
+        var: motd_file
+```
+
+The motd_file variable will now be a complex JSON object containing details about the file. For example, motd_file.stat.exists will be true or false.
+
+#### Conditional Execution with when
+The when statement allows you to run a task only if a certain condition is met. This is often used with variables created by register.
+
+Let's expand on the previous example: install a package only if a command fails.
+```
+- name: Install Nginx only if it is not installed
+  hosts: all
+  become: yes
+  tasks:
+    - name: Check if nginx command exists
+      ansible.builtin.command: "which nginx"
+      register: nginx_check
+      ignore_errors: yes # Important: Prevents the play from failing if nginx is not found
+      changed_when: false # Important: This command doesn't change anything, so don't report it as "changed"
+
+    - name: Install nginx if it was not found
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+      when: nginx_check.rc != 0 # .rc is the return code. 0 means success, non-zero means failure.
+```
+
+This playbook will only run the "Install nginx" task if the which nginx command failed (i.e., returned a code other than 0).
+
+### Loops
+A loop lets you run a task multiple times with different values. This is extremely useful for repetitive actions like creating multiple users or installing a list of packages.
+```
+- name: Install multiple development packages
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install packages using a loop
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - vim
+        - git
+        - curl
+        - htop
+```
+
+In this example, the task will run four times. Each time, the special variable {{ item }} will be replaced with the next value from the loop (vim, then git, etc.).
+
+### Using Tags to Control Execution
+In a large playbook, you may not always want to run every single task. Tags allow you to label plays or individual tasks so you can selectively run only the parts you need.
+
+Example Playbook with Tags:
+```
+- name: Full server setup
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update all packages
+      ansible.builtin.apt:
+        upgrade: dist
+      tags:
+        - packages
+
+    - name: Create a new user
+      ansible.builtin.user:
+        name: devops
+        state: present
+      tags:
+        - users
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+      tags:
+        - packages
+        - web
+```
+
+Now you can control execution from the command line:
+
+Run only the tasks for installing/updating packages:
+```
+ansible-playbook my_server_setup.yml --tags packages
+```
+
+Run only the web-related tasks:
+```
+ansible-playbook my_server_setup.yml --tags web
+```
+
+Skip a specific tag (e.g., run everything EXCEPT user creation):
+```
+ansible-playbook my_server_setup.yml --skip-tags users
+```

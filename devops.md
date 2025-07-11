@@ -2998,3 +2998,180 @@ To understand how Ansible works, it's helpful to know its main components:
 * **`Roles`**: A structured way to organize and reuse Ansible content (tasks, handlers, variables, templates) into a portable package. For instance, you could have a role for setting up Nginx that you can reuse across multiple projects.
 
 * **`Handlers`**: Special tasks that only run when "notified" by another task. They are typically used to restart services only if a configuration file has changed.
+
+## Part 1: Setting up SSH Key-Based Authentication
+Before using Ansible, you should configure passwordless SSH access from your control node (your PC) to the managed nodes (your servers). This is more secure than using passwords and is essential for automation. It works using a pair of cryptographic keys: a private key that you keep secret on your machine, and a public key that you place on the servers you want to manage.
+
+Think of the public key as a lock you put on the server's door, and the private key as the only key that can open that lock.
+
+### Step 1.1: How to Generate an SSH Key Pair
+If you don't already have an SSH key pair, you can generate one with a single command on your control node (your computer).
+
+Open your terminal.
+
+Run the following command:
+
+```
+ssh-keygen -t rsa -b 4096
+```
+
+* ssh-keygen: This is the command-line tool for creating new SSH keys.
+
+* -t rsa: The -t flag stands for "type". We are specifying the rsa algorithm, which is a common and secure standard.
+
+* -b 4096: The -b flag stands for "bits". We are specifying a key length of 4096 bits, which is very secure.
+
+
+* Enter file in which to save the key (/home/saman/.ssh/id_rsa): Just press Enter to accept the default location.
+
+* Enter passphrase (empty for no passphrase): For automation with Ansible, it is strongly recommended to not use a passphrase. Just press Enter to leave it empty.
+
+* Enter same passphrase again: Press Enter again.
+
+This process creates two files in your ~/.ssh/ directory:
+
+**`id_rsa`**: Your private key. Never share this file with anyone.
+
+**`id_rsa.pub`**: Your public key. This is the key you will copy to other servers.
+
+### Step 1.2: How to Copy Your Public Key to a Server
+Now, you need to copy your public key to each server you want to manage with Ansible. The easiest and most recommended way is using the ssh-copy-id command.
+
+Run the following command for each of your servers, replacing user with your username on the server and remote_host_ip with the server's IP address.
+
+```
+ssh-copy-id user@remote_host_ip
+```
+
+* ssh-copy-id: This tool automatically copies your public key to the remote server and places it in the correct file (~/.ssh/authorized_keys) with the correct permissions.
+
+* user@remote_host_ip: The username and IP address of the server you want to give access to.
+
+You will be asked for your password for user@remote_host_ip one last time. After you enter it, the key will be copied.
+
+### Step 1.3: How to SSH to the Server
+After copying the key, you can now connect to your server without a password.
+
+```
+ssh user@remote_host_ip
+```
+
+If everything was done correctly, you should be logged in immediately without being asked for a password. Repeat Step 1.2 for all servers you intend to manage.
+
+## Part 2: How to Write the hosts.yml File
+The inventory file is the foundation of Ansible. It tells Ansible what servers exist and how to connect to them. Using the YAML format (hosts.yml) is the modern standard.
+
+Here is a sample hosts.yml file. Let's write it and then explain it word-for-word.
+
+File: hosts.yml
+
+```
+all:
+  children:
+    webservers:
+      hosts:
+        web1:
+          ansible_host: 192.168.1.10
+        web2:
+          ansible_host: 192.168.1.11
+    dbservers:
+      hosts:
+        db1:
+          ansible_host: 192.168.1.20
+  vars:
+    ansible_user: saman
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+```
+
+**`all:`**: This is a special, built-in group in Ansible that automatically contains every host you define in the inventory. It acts as the top-level container for your entire infrastructure.
+
+**`children:`**: This keyword indicates that you are defining groups that are "children" of the parent group (in this case, all). This is the standard way to create your own custom groups.
+
+**`webservers:`**: This is a custom group name you have chosen. Its purpose is to logically organize all your web servers. In a playbook, you can choose to run tasks only against the webservers group.
+
+**`hosts:`**: This keyword, nested under a group name, signifies the beginning of the list of individual servers (hosts) that belong to that group.
+
+**`web1:`**: This is a friendly alias or logical name for your first web server. This is the name you will use to refer to this specific server. It can be anything you want.
+
+**`ansible_host`**: 192.168.1.10: This is a critical Ansible Connection Variable. It tells Ansible the actual IP address (or DNS name) it should use to connect to the server you've named web1.
+
+**`dbservers:`**: This is another custom group name, created to organize your database servers separately from your web servers.
+
+**`vars:`**: This keyword is used to define variables that will apply to the group it is defined under. Since it is under all, the variables here will apply to every single host in your inventory.
+
+**`ansible_user`**: saman: This variable sets the default username that Ansible will use for SSH connections to all hosts. You can override this for specific hosts or groups if needed.
+
+**`ansible_ssh_private_key_file`**: ~/.ssh/id_rsa: This variable tells Ansible the exact path to the private SSH key it should use for authentication. This should match the private key you generated in Part 1.
+
+## Part 3: How to Write a Playbook
+A playbook is where you define the steps to automate a process. It's a YAML file containing a list of "plays," and each play contains a list of "tasks."
+
+Here is a sample playbook that installs and starts the Nginx web server.
+
+File: install_nginx.yml
+```
+---
+- name: Install and Start Nginx
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install the latest version of Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Start and enable the Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+```
+
+**`---`**: This is standard YAML syntax that optionally indicates the start of a document. It's a good practice to include it.
+
+**`- (hyphen)`**: In YAML, a hyphen signifies the start of a list item. An Ansible playbook is a list of one or more "plays." This file contains a single play.
+
+**`name`**: Install and Start Nginx: This is a human-readable description for the entire play. This name will be printed on the screen when the playbook runs, helping you understand what's happening.
+
+**`hosts`**: webservers: This is the target section. It tells Ansible to run this entire play only on the hosts that belong to the webservers group in your hosts.yml inventory file.
+
+**`become`**: yes: This is for privilege escalation. Setting it to yes instructs Ansible to use sudo (by default) to execute the tasks. This is necessary for system-level operations like installing software or managing services.
+
+**`tasks:`**: This keyword marks the beginning of the list of actions to be performed in this play. The tasks listed under it are executed in order, from top to bottom.
+
+**`- name`**: Install the latest version of Nginx: This is the description for a single task. Like the play name, this is printed during execution, so you can track the playbook's progress step-by-step.
+
+**`ansible.builtin.apt:`**: This is the module being called for the task.
+
+A module is a reusable, standalone script that Ansible runs. The apt module is used to manage packages on Debian-based systems like Ubuntu.
+
+ansible.builtin is the collection where this core module resides. Using the full name (Fully Qualified Collection Name or FQCN) is a modern best practice.
+
+**`name: nginx:`** This is an argument (or parameter) passed to the apt module. It specifies the name of the package to be managed.
+
+**`state`**: present: This is another argument for the apt module. The state present ensures that the package is installed. If it's already installed, Ansible does nothing, thanks to its idempotent nature.
+
+**`update_cache`**: yes: This argument tells the apt module to run the equivalent of apt-get update before attempting to install the package. This ensures the local package index is up-to-date.
+
+**`ansible.builtin.service:`**: This calls the service module, which is used to control system services (e.g., start, stop, restart).
+
+**`name`**: nginx: An argument specifying the name of the service to manage.
+
+**`state`**: started: This argument ensures that the Nginx service is running.
+
+**`enabled: yes`**: This argument ensures that the Nginx service is configured to start automatically when the server boots up.
+
+## Part 4: How to Run the Playbook (The Command)
+Now that you have your inventory (hosts.yml) and your playbook (install_nginx.yml), you can run it with the following command:
+```
+ansible-playbook -i hosts.yml install_nginx.yml
+```
+
+**`ansible-playbook`**: This is the Ansible command used specifically to execute playbook files. It reads the playbook and orchestrates the tasks defined within it.
+
+**`-i`**: This is a flag (or option), short for --inventory. It tells the ansible-playbook command where to find your inventory file.
+
+**`hosts.yml`**: This is the value for the -i flag. You are providing the path to your inventory file.
+
+**`install_nginx.yml`**: This is the final argument to the command. It is the path to the playbook file that you want to execute
